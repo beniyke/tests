@@ -6,12 +6,13 @@ namespace Tests\Packages\Bridge\Integration;
 
 use Bridge\ApiAuth\ApiTokenValidatorService;
 use Bridge\ApiAuth\Validators\AuthTokenValidator;
-use Bridge\Contracts\TokenableInterface;
 use Bridge\Models\ApiKey;
 use Core\Ioc\Container;
 use Core\Services\ConfigServiceInterface;
 use Helpers\Http\Request;
 use Mockery;
+use Security\Auth\Contracts\Authenticatable;
+use Security\Auth\Contracts\Tokenable;
 
 describe('API Authentication System', function () {
 
@@ -86,7 +87,7 @@ describe('API Authentication System', function () {
             'abilities' => ['*'],
         ]);
 
-        $mockUser = Mockery::mock(TokenableInterface::class);
+        $mockUser = Mockery::mock(Authenticatable::class, Tokenable::class);
         $mockUser->shouldReceive('getAttribute')->with('id')->andReturn(1);
         $mockUser->shouldReceive('getAttribute')->with('name')->andReturn('User');
 

@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Bridge\ApiAuth\Validators\AuthTokenValidator;
-use Bridge\Contracts\TokenableInterface;
 use Bridge\TokenManager;
+use Security\Auth\Contracts\Authenticatable;
 
 describe('AuthTokenValidator', function () {
     beforeEach(function () {
@@ -18,7 +18,7 @@ describe('AuthTokenValidator', function () {
 
     test('validates token and returns tokenable', function () {
         $token = '1|secret-token';
-        $user = Mockery::mock(TokenableInterface::class);
+        $user = Mockery::mock(Authenticatable::class);
 
         $this->tokenManager->shouldReceive('authenticate')
             ->once()
@@ -45,7 +45,7 @@ describe('AuthTokenValidator', function () {
 
     test('validates token with specific abilities', function () {
         $token = '1|secret-token';
-        $user = Mockery::mock(TokenableInterface::class);
+        $user = Mockery::mock(Authenticatable::class);
         $abilities = ['user:read', 'user:write'];
 
         $this->tokenManager->shouldReceive('authenticate')
@@ -68,7 +68,7 @@ describe('AuthTokenValidator', function () {
 
     test('returns null if token lacks required ability', function () {
         $token = '1|secret-token';
-        $user = Mockery::mock(TokenableInterface::class);
+        $user = Mockery::mock(Authenticatable::class);
         $abilities = ['user:read', 'user:delete'];
 
         $this->tokenManager->shouldReceive('authenticate')
@@ -91,7 +91,7 @@ describe('AuthTokenValidator', function () {
 
     test('accepts wildcard abilities', function () {
         $token = '1|secret-token';
-        $user = Mockery::mock(TokenableInterface::class);
+        $user = Mockery::mock(Authenticatable::class);
 
         $this->tokenManager->shouldReceive('authenticate')
             ->once()

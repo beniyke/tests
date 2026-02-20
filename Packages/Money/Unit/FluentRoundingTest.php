@@ -105,7 +105,7 @@ describe('Fluent Rounding Methods', function () {
         // But if there's any fractional part: -100 * 1.49 = -149 (rounds up toward 0)
         $result = $money->multiplyAndRoundUp(1.5);
         // Since -100 * 1.5 = -150 exactly, no fractional rounding applies
-        expect($result->getAmount())->toBe(-149);
+        expect($result->getAmount())->toBe(-150);
     });
 
     test('real-world tax calculation with roundUp', function () {

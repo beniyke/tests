@@ -2,12 +2,7 @@
 
 declare(strict_types=1);
 
-use Helpers\Macroable;
-
-class TestMacroableClass
-{
-    use Macroable;
-}
+use Tests\System\Support\Helpers\Macroable\TestMacroableClass;
 
 describe('Macroable Trait', function () {
     afterEach(function () {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Carbon\Carbon;
+use Metric\Enums\GoalStatus;
 use Metric\Metric;
 use Metric\Models\Goal;
 use Metric\Models\KpiValue;
@@ -17,10 +18,6 @@ beforeEach(function () {
     $this->bootPackage('Audit', null, true);
     $this->bootPackage('Hub', null, true);
     $this->bootPackage('Metric', null, true);
-
-    // Mock Audit if it's being resolved as a mock globally or failing
-    // For now let's see if real Audit works if we don't mock it.
-    // Actually, if it's failing, it's because something is mocking it.
 
     $this->user = User::create([
         'name' => 'Developer',
@@ -43,6 +40,7 @@ test('it can create a goal with key results', function () {
     expect($goal)->toBeInstanceOf(Goal::class);
     expect($goal->keyResults)->toHaveCount(1);
     expect($goal->progress)->toBe(0.0);
+    expect($goal->status)->toBe(GoalStatus::ACTIVE);
 });
 
 test('it updates goal progress when key results are updated', function () {

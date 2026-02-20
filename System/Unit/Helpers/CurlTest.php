@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Helpers\File\FileSystem;
+use Helpers\File\Paths;
 use Helpers\Http\Client\Batch;
 use Helpers\Http\Client\Curl;
 use Helpers\Http\Client\Response;
@@ -148,37 +150,37 @@ describe('Curl', function () {
     describe('File Attachments', function () {
         test('attaches file', function () {
             // Create a temporary test file
-            $testFile = sys_get_temp_dir().'/test-upload.txt';
-            file_put_contents($testFile, 'test content');
+            $testFile = Paths::testPath('storage/test-upload.txt');
+            FileSystem::write($testFile, 'test content');
 
             $curl = new Curl();
             $curl->attach('file', $testFile);
             expect($curl)->toBeInstanceOf(Curl::class);
 
             // Cleanup
-            unlink($testFile);
+            FileSystem::delete($testFile);
         });
 
         test('attaches file with mime type', function () {
-            $testFile = sys_get_temp_dir().'/test-upload.txt';
-            file_put_contents($testFile, 'test content');
+            $testFile = Paths::testPath('storage/test-upload-mime.txt');
+            FileSystem::write($testFile, 'test content');
 
             $curl = new Curl();
             $curl->attach('file', $testFile, 'text/plain');
             expect($curl)->toBeInstanceOf(Curl::class);
 
-            unlink($testFile);
+            FileSystem::delete($testFile);
         });
 
         test('attaches file with custom filename', function () {
-            $testFile = sys_get_temp_dir().'/test-upload.txt';
-            file_put_contents($testFile, 'test content');
+            $testFile = Paths::testPath('storage/test-upload-custom.txt');
+            FileSystem::write($testFile, 'test content');
 
             $curl = new Curl();
             $curl->attach('file', $testFile, 'text/plain', 'custom-name.txt');
             expect($curl)->toBeInstanceOf(Curl::class);
 
-            unlink($testFile);
+            FileSystem::delete($testFile);
         });
 
         test('ignores non-existent file', function () {

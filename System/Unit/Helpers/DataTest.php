@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Helpers\Data;
+use Helpers\Data\Data;
 
 describe('Data - Creation and Initialization', function () {
     test('creates data from array', function () {

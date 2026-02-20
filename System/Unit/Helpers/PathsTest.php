@@ -142,4 +142,14 @@ describe('Paths', function () {
         expect($dir)->toContain('path');
         expect($dir)->toContain('to');
     });
+
+    test('securePath allows local paths', function () {
+        $path = Paths::securePath('App/Models');
+        expect($path)->toContain('App');
+        expect($path)->toContain('Models');
+    });
+
+    test('securePath blocks traversal attempts', function () {
+        Paths::securePath('../../../etc/passwd');
+    })->throws(RuntimeException::class);
 });

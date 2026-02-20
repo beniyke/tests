@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Packages\Pay\Unit;
 
-use Helpers\Data;
+use Helpers\Data\Data;
 use Mockery;
 use Pay\Jobs\ProcessWebhook;
 use Pay\Services\WebhookService;

@@ -7,6 +7,7 @@ namespace Tests\Packages\Wave\Feature;
 use Helpers\DateTimeHelper;
 use Testing\Concerns\RefreshDatabase;
 use Tests\TestCase;
+use Wave\Enums\AnalyticsMetric;
 use Wave\Models\Invoice;
 use Wave\Models\Plan;
 use Wave\Models\Subscription;
@@ -16,8 +17,9 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     /** @var TestCase $this */
-    $this->bootPackage('Wave');
     $this->refreshDatabase();
+    $this->bootPackage('Wave', null, true);
+    config()->set('wave.tax.enabled', false);
 });
 
 it('calculates optimized MRR correctly', function () {
@@ -45,22 +47,14 @@ it('generates revenue history for charts', function () {
     // 3. Paid 2 days ago
     $inv2 = Wave::invoices()->make()->for((object)['id' => 1], 'user')->amount(500)->paid()->create();
     $inv2->update(['paid_at' => DateTimeHelper::now()->subDays(2)]);
+    $revenueHistory = Wave::analytics()->getHistory(AnalyticsMetric::REVENUE->value);
 
+    expect($revenueHistory)->toHaveKeys(['labels', 'values']);
+    expect($revenueHistory['values'])->toBeArray();
 
-
-    $history = Wave::analytics()->getHistory('revenue', '7d');
-
-    expect($history)->toHaveKeys(['labels', 'values']);
-    expect($history['values'])->toBeArray();
-
-    // Check specific dates (assuming ordered by date in implementation or simple check)
-    // Key-based check on values might be tricky if implemented as indexed array.
-    // Implementation details: `array_values($values)` is returned.
-    // The dates are generated sequentially.
-    // We verify sum or specific entries if we can.
-    // But since it's an array of ints, let's just check the sum matches 3500.
-
-    expect(array_sum($history['values']))->toBe(3500);
+    // Verify specifically that we have the expected totals in the history
+    // Since getHistory returns values for the period, we check the sum matches total paid
+    expect(array_sum($revenueHistory['values']))->toBe(3500);
 });
 
 it('generates domain stats', function () {

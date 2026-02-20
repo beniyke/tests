@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Helpers\File\FileSystem;
+use Helpers\File\Paths;
 use Helpers\Http\Client\Curl;
 
 describe('Curl Download', function () {
@@ -20,10 +22,10 @@ describe('Curl Download', function () {
     });
 
     test('successfully downloads a file', function () {
-        $sourceFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'curl_test_src_' . uniqid() . '.txt';
-        $destFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'curl_test_dst_' . uniqid() . '.txt';
+        $sourceFile = Paths::testPath('storage/curl_test_src_' . uniqid() . '.txt');
+        $destFile = Paths::testPath('storage/curl_test_dst_' . uniqid() . '.txt');
         $content = 'Hello World ' . uniqid();
-        file_put_contents($sourceFile, $content);
+        FileSystem::write($sourceFile, $content);
 
         $curl = new Curl();
 
@@ -34,16 +36,16 @@ describe('Curl Download', function () {
         $result = $curl->download($url, $destFile);
 
         expect($result)->toBeTrue();
-        expect(file_exists($destFile))->toBeTrue();
-        expect(file_get_contents($destFile))->toBe($content);
+        expect(FileSystem::exists($destFile))->toBeTrue();
+        expect(FileSystem::get($destFile))->toBe($content);
 
         // Cleanup
-        @unlink($sourceFile);
-        @unlink($destFile);
+        FileSystem::delete($sourceFile);
+        FileSystem::delete($destFile);
     });
 
     test('cleanups temp file on 404 or failure', function () {
-        $destFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'curl_test_fail_' . uniqid() . '.txt';
+        $destFile = Paths::testPath('storage/curl_test_fail_' . uniqid() . '.txt');
 
         $curl = new Curl();
         // Use a non-existent local file to trigger CURL failure
@@ -51,7 +53,7 @@ describe('Curl Download', function () {
         $result = $curl->download($url, $destFile);
 
         expect($result)->toBeFalse();
-        expect(file_exists($destFile))->toBeFalse();
+        expect(FileSystem::exists($destFile))->toBeFalse();
 
         // Find if any .tmp file was left
         $tmpFiles = glob($destFile . '.tmp.*');

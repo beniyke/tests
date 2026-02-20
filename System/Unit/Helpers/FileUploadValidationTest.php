@@ -17,15 +17,17 @@ function move_uploaded_file(string $from, string $to): bool
 
 namespace Tests\System\Unit\Helpers;
 
+use Helpers\File\FileSystem;
 use Helpers\File\FileUploadValidator;
+use Helpers\File\Paths;
 use Helpers\Http\FileHandler;
 use Helpers\Validation\Validator;
 
 // Helper to create a dummy file for testing
 function createDummyFile(string $content = 'test content', string $extension = 'txt'): string
 {
-    $filename = sys_get_temp_dir().'/test_file_'.uniqid().'.'.$extension;
-    file_put_contents($filename, $content);
+    $filename = Paths::testPath('storage/test_file_' . uniqid() . '.' . $extension);
+    FileSystem::write($filename, $content);
 
     return $filename;
 }
@@ -33,10 +35,10 @@ function createDummyFile(string $content = 'test content', string $extension = '
 // Helper to create a dummy image file
 function createDummyImage(): string
 {
-    $filename = sys_get_temp_dir().'/test_image_'.uniqid().'.png';
+    $filename = Paths::testPath('storage/test_image_' . uniqid() . '.png');
     // Create a minimal valid PNG file
     $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
-    file_put_contents($filename, $png);
+    FileSystem::write($filename, $png);
 
     return $filename;
 }
@@ -45,10 +47,10 @@ describe('FileUploadValidation', function () {
 
     afterEach(function () {
         // Clean up any test files in temp dir
-        $files = glob(sys_get_temp_dir().'/test_*');
+        $files = glob(Paths::testPath('storage/test_*'));
         foreach ($files as $file) {
-            if (is_file($file)) {
-                @unlink($file);
+            if (FileSystem::isFile($file)) {
+                FileSystem::delete($file);
             }
         }
     });
@@ -168,9 +170,9 @@ describe('FileUploadValidation', function () {
 
         test('moveSecurely() moves file', function () {
             $file = createDummyFile();
-            $destDir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'uploads';
-            if (! is_dir($destDir)) {
-                mkdir($destDir);
+            $destDir = Paths::testPath('storage/uploads');
+            if (! FileSystem::isDir($destDir)) {
+                FileSystem::mkdir($destDir);
             }
 
             $upload = [
@@ -183,14 +185,14 @@ describe('FileUploadValidation', function () {
 
             $handler = new FileHandler($upload);
 
-            $path = $handler->moveSecurely($destDir.DIRECTORY_SEPARATOR.'test.txt', ['extensions' => ['txt'], 'generateSafeName' => false], false);
+            $path = $handler->moveSecurely($destDir . DIRECTORY_SEPARATOR . 'test.txt', ['extensions' => ['txt'], 'generateSafeName' => false], false);
 
-            expect(file_exists($path))->toBeTrue();
-            expect($path)->toBe($destDir.DIRECTORY_SEPARATOR.'test.txt');
+            expect(FileSystem::exists($path))->toBeTrue();
+            expect($path)->toBe($destDir . DIRECTORY_SEPARATOR . 'test.txt');
 
             // Cleanup
-            @unlink($path);
-            @rmdir($destDir);
+            FileSystem::delete($path);
+            FileSystem::delete($destDir);
         });
     });
 
@@ -362,9 +364,9 @@ describe('FileUploadValidation', function () {
 
         test('upload_image helper works', function () {
             $file = createDummyImage();
-            $destDir = sys_get_temp_dir().'/uploads_helper';
-            if (! is_dir($destDir)) {
-                mkdir($destDir);
+            $destDir = Paths::testPath('storage/uploads_helper');
+            if (! FileSystem::isDir($destDir)) {
+                FileSystem::mkdir($destDir);
             }
 
             $upload = [
@@ -380,13 +382,13 @@ describe('FileUploadValidation', function () {
             // Actually upload_image calls moveUploadedFile which calls move_uploaded_file (mocked to rename)
             // So it should work fine.
 
-            $path = upload_image($upload, $destDir.'/image.png');
+            $path = upload_image($upload, $destDir . '/image.png');
 
-            expect(file_exists($path))->toBeTrue();
+            expect(FileSystem::exists($path))->toBeTrue();
 
             // Cleanup
-            @unlink($path);
-            @rmdir($destDir);
+            FileSystem::delete($path);
+            FileSystem::delete($destDir);
         });
     });
 });

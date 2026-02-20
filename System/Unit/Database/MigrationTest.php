@@ -5,7 +5,10 @@ declare(strict_types=1);
 use Database\Connection;
 use Database\DB;
 use Database\Migration\MigrationRepository;
+use Database\Migration\Migrator;
 use Database\Schema\Schema;
+use Helpers\File\FileSystem;
+use Helpers\File\Paths;
 
 beforeEach(function () {
     // Create SQLite in-memory connection
@@ -15,7 +18,7 @@ beforeEach(function () {
         ->initCommand('PRAGMA foreign_keys = ON');
 
     // Set as default connection
-    DB::setConnection($this->connection);
+    DB::setDefaultConnection($this->connection);
     Schema::setConnection($this->connection);
 });
 
@@ -264,15 +267,15 @@ describe('Migration - Complex Scenarios', function () {
 
 describe('Migration - Migrator Methods', function () {
     test('getPendingMigrations returns only unrun migrations', function () {
-        $tempDir = sys_get_temp_dir() . '/test_migrations_' . uniqid();
-        mkdir($tempDir, 0755, true);
+        $tempDir = Paths::testPath('storage/test_migrations_' . uniqid());
+        FileSystem::mkdir($tempDir);
 
         // Create test migration files
-        file_put_contents($tempDir . '/2024_01_01_000000_create_users_table.php', '<?php');
-        file_put_contents($tempDir . '/2024_01_02_000000_create_posts_table.php', '<?php');
-        file_put_contents($tempDir . '/2024_01_03_000000_create_comments_table.php', '<?php');
+        FileSystem::write($tempDir . '/2024_01_01_000000_create_users_table.php', '<?php');
+        FileSystem::write($tempDir . '/2024_01_02_000000_create_posts_table.php', '<?php');
+        FileSystem::write($tempDir . '/2024_01_03_000000_create_comments_table.php', '<?php');
 
-        $migrator = new Database\Migration\Migrator($this->connection, $tempDir);
+        $migrator = new Migrator($this->connection, $tempDir);
         $repo = $migrator->getRepository();
 
         // Mark first two as run
@@ -286,63 +289,32 @@ describe('Migration - Migrator Methods', function () {
         expect($pending)->toContain('2024_01_03_000000_create_comments_table');
 
         // Cleanup
-        array_map('unlink', glob($tempDir . '/*.php'));
-        rmdir($tempDir);
+        FileSystem::delete($tempDir);
     });
 
     test('runFiles executes only specified migration files', function () {
-        $tempDir = sys_get_temp_dir() . '/test_migrations_' . uniqid();
-        mkdir($tempDir, 0755, true);
+        $tempDir = Paths::testPath('storage/test_migrations_' . uniqid());
+        FileSystem::mkdir($tempDir);
 
         // Create test migration files with actual migration classes
-        $migration1 = <<<'PHP'
-<?php
-use Database\Migration\BaseMigration;
-use Database\Schema\Schema;
+        $stub = FileSystem::get(Paths::testPath('Fixtures/Database/Migrations/migration.stub'));
 
-class CreateUsersTableTest1 extends BaseMigration
-{
-    public function up(): void
-    {
-        Schema::create('users', function ($table) {
-            $table->id();
-            $table->string('name');
-        });
-    }
+        $migration1 = str_replace(
+            ['{{class}}', '{{table}}', '{{up}}'],
+            ['CreateUsersTableTest1', 'users', '$table->id(); $table->string("name");'],
+            $stub
+        );
 
-    public function down(): void
-    {
-        Schema::drop('users');
-    }
-}
-PHP;
+        $migration2 = str_replace(
+            ['{{class}}', '{{table}}', '{{up}}'],
+            ['CreatePostsTableTest1', 'posts', '$table->id(); $table->string("title");'],
+            $stub
+        );
 
-        $migration2 = <<<'PHP'
-<?php
-use Database\Migration\BaseMigration;
-use Database\Schema\Schema;
+        FileSystem::write($tempDir . '/2024_01_01_000000_create_users_table_test1.php', $migration1);
+        FileSystem::write($tempDir . '/2024_01_02_000000_create_posts_table_test1.php', $migration2);
 
-class CreatePostsTableTest1 extends BaseMigration
-{
-    public function up(): void
-    {
-        Schema::create('posts', function ($table) {
-            $table->id();
-            $table->string('title');
-        });
-    }
-
-    public function down(): void
-    {
-        Schema::drop('posts');
-    }
-}
-PHP;
-
-        file_put_contents($tempDir . '/2024_01_01_000000_create_users_table_test1.php', $migration1);
-        file_put_contents($tempDir . '/2024_01_02_000000_create_posts_table_test1.php', $migration2);
-
-        $migrator = new Database\Migration\Migrator($this->connection, $tempDir);
+        $migrator = new Migrator($this->connection, $tempDir);
 
         // Run only the first migration
         $results = $migrator->runFiles(['2024_01_01_000000_create_users_table_test1']);
@@ -354,38 +326,24 @@ PHP;
         expect($this->connection->tableExists('posts'))->toBeFalse();
 
         // Cleanup
-        array_map('unlink', glob($tempDir . '/*.php'));
-        rmdir($tempDir);
+        FileSystem::delete($tempDir);
     });
 
     test('runFiles skips already run migrations', function () {
-        $tempDir = sys_get_temp_dir() . '/test_migrations_' . uniqid();
-        mkdir($tempDir, 0755, true);
+        $tempDir = Paths::testPath('storage/test_migrations_' . uniqid());
+        FileSystem::mkdir($tempDir);
 
-        $migration = <<<'PHP'
-<?php
-use Database\Migration\BaseMigration;
-use Database\Schema\Schema;
+        $stub = FileSystem::get(Paths::testPath('Fixtures/Database/Migrations/migration.stub'));
 
-class CreateUsersTableTest2 extends BaseMigration
-{
-    public function up(): void
-    {
-        Schema::create('users', function ($table) {
-            $table->id();
-        });
-    }
+        $migration = str_replace(
+            ['{{class}}', '{{table}}', '{{up}}'],
+            ['CreateUsersTableTest2', 'users', '$table->id();'],
+            $stub
+        );
 
-    public function down(): void
-    {
-        Schema::drop('users');
-    }
-}
-PHP;
+        FileSystem::write($tempDir . '/2024_01_01_000000_create_users_table_test2.php', $migration);
 
-        file_put_contents($tempDir . '/2024_01_01_000000_create_users_table_test2.php', $migration);
-
-        $migrator = new Database\Migration\Migrator($this->connection, $tempDir);
+        $migrator = new Migrator($this->connection, $tempDir);
         $repo = $migrator->getRepository();
 
         // Mark as already run
@@ -398,60 +356,31 @@ PHP;
         expect($results)->toHaveCount(0); // Should skip already run migration
 
         // Cleanup
-        unlink($tempDir . '/2024_01_01_000000_create_users_table_test2.php');
-        rmdir($tempDir);
+        FileSystem::delete($tempDir);
     });
 
     test('runFiles handles multiple files', function () {
-        $tempDir = sys_get_temp_dir() . '/test_migrations_' . uniqid();
-        mkdir($tempDir, 0755, true);
+        $tempDir = Paths::testPath('storage/test_migrations_' . uniqid());
+        FileSystem::mkdir($tempDir);
 
-        $migration1 = <<<'PHP'
-<?php
-use Database\Migration\BaseMigration;
-use Database\Schema\Schema;
+        $stub = FileSystem::get(Paths::testPath('Fixtures/Database/Migrations/migration.stub'));
 
-class CreateUsersTableTest3 extends BaseMigration
-{
-    public function up(): void
-    {
-        Schema::create('users', function ($table) {
-            $table->id();
-        });
-    }
+        $migration1 = str_replace(
+            ['{{class}}', '{{table}}', '{{up}}'],
+            ['CreateUsersTableTest3', 'users', '$table->id();'],
+            $stub
+        );
 
-    public function down(): void
-    {
-        Schema::drop('users');
-    }
-}
-PHP;
+        $migration2 = str_replace(
+            ['{{class}}', '{{table}}', '{{up}}'],
+            ['CreatePostsTableTest3', 'posts', '$table->id();'],
+            $stub
+        );
 
-        $migration2 = <<<'PHP'
-<?php
-use Database\Migration\BaseMigration;
-use Database\Schema\Schema;
+        FileSystem::write($tempDir . '/2024_01_01_000000_create_users_table_test3.php', $migration1);
+        FileSystem::write($tempDir . '/2024_01_02_000000_create_posts_table_test3.php', $migration2);
 
-class CreatePostsTableTest3 extends BaseMigration
-{
-    public function up(): void
-    {
-        Schema::create('posts', function ($table) {
-            $table->id();
-        });
-    }
-
-    public function down(): void
-    {
-        Schema::drop('posts');
-    }
-}
-PHP;
-
-        file_put_contents($tempDir . '/2024_01_01_000000_create_users_table_test3.php', $migration1);
-        file_put_contents($tempDir . '/2024_01_02_000000_create_posts_table_test3.php', $migration2);
-
-        $migrator = new Database\Migration\Migrator($this->connection, $tempDir);
+        $migrator = new Migrator($this->connection, $tempDir);
 
         // Run both migrations
         $results = $migrator->runFiles([
@@ -464,7 +393,6 @@ PHP;
         expect($this->connection->tableExists('posts'))->toBeTrue();
 
         // Cleanup
-        array_map('unlink', glob($tempDir . '/*.php'));
-        rmdir($tempDir);
+        FileSystem::delete($tempDir);
     });
 });

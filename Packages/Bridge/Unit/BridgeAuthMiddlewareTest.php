@@ -3,13 +3,15 @@
 declare(strict_types=1);
 
 use Bridge\Middleware\BridgeAuthMiddleware;
-use Bridge\TokenManager;
 use Helpers\Http\Request;
 use Helpers\Http\Response;
+use Security\Auth\Contracts\Authenticatable;
+use Security\Auth\Contracts\Tokenable;
+use Security\Auth\Interfaces\TokenManagerInterface;
 
 describe('BridgeAuthMiddleware', function () {
     beforeEach(function () {
-        $this->tokenManager = Mockery::mock(TokenManager::class);
+        $this->tokenManager = Mockery::mock(TokenManagerInterface::class);
         $this->middleware = new BridgeAuthMiddleware($this->tokenManager);
         $this->request = Mockery::mock(Request::class);
         $this->response = Mockery::mock(Response::class);
@@ -49,8 +51,10 @@ describe('BridgeAuthMiddleware', function () {
 
     test('authenticates user and sets request attributes', function () {
         $token = 'valid-token';
-        $user = Mockery::mock(Bridge\Contracts\TokenableInterface::class);
+        $user = Mockery::mock(Authenticatable::class, Tokenable::class);
         $user->id = 1;
+        $user->shouldReceive('getAuthId')->andReturn(1);
+        $user->shouldReceive('withAccessToken')->andReturnSelf();
 
         $this->request->shouldReceive('getBearerToken')->andReturn($token);
 

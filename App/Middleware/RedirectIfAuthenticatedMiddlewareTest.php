@@ -11,11 +11,13 @@ describe('RedirectIfAuthenticatedMiddleware', function () {
 
     test('redirects authenticated users on login route', function () {
         $auth = Mockery::mock(AuthServiceInterface::class);
+        $auth->shouldReceive('viaGuard')->with('web')->andReturnSelf();
         $auth->shouldReceive('isAuthenticated')->andReturn(true);
 
         $middleware = new RedirectIfAuthenticatedMiddleware($auth);
         $request = Mockery::mock(Request::class);
         $request->shouldReceive('isLoginRoute')->andReturn(true);
+        $request->shouldReceive('getRouteContext')->with('guards')->andReturn(['web']);
         $request->shouldReceive('fullRouteByName')->with('home')->andReturn('/home');
 
         $response = Mockery::mock(Response::class);
@@ -31,11 +33,13 @@ describe('RedirectIfAuthenticatedMiddleware', function () {
 
     test('allows unauthenticated users on login route', function () {
         $auth = Mockery::mock(AuthServiceInterface::class);
+        $auth->shouldReceive('viaGuard')->with('web')->andReturnSelf();
         $auth->shouldReceive('isAuthenticated')->andReturn(false);
 
         $middleware = new RedirectIfAuthenticatedMiddleware($auth);
         $request = Mockery::mock(Request::class);
         $request->shouldReceive('isLoginRoute')->andReturn(true);
+        $request->shouldReceive('getRouteContext')->with('guards')->andReturn(['web']);
 
         $response = Mockery::mock(Response::class);
 

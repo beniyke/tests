@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Helpers\Data\Data;
 use Tests\System\DTOs\TestProductDTO;
 use Tests\System\DTOs\TestStrictDTO;
 use Tests\System\DTOs\TestUserDTO;
@@ -111,7 +112,7 @@ describe('DTO - Conversion Methods', function () {
         $dto = new TestUserDTO(['name' => 'Diana', 'age' => 29]);
         $data = $dto->getData();
 
-        expect($data)->toBeInstanceOf(Helpers\Data::class);
+        expect($data)->toBeInstanceOf(Data::class);
         expect($data->get('name'))->toBe('Diana');
         expect($data->get('age'))->toBe(29);
     });

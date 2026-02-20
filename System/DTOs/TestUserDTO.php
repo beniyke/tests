@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\System\DTOs;
 
-use Helpers\DTO;
+use Helpers\Data\DTO;
 
 class TestUserDTO extends DTO
 {

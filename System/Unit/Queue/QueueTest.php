@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Helpers\Array\Collections;
-use Helpers\Data;
+use Helpers\Data\Data;
 use Queue\QueueManager;
 use Queue\Scheduler;
 use Tests\System\Helpers\ConfigStub;
@@ -18,7 +18,7 @@ describe('Queue System', function () {
 
         // Initialize scheduler and queue manager with real dependencies
         $this->scheduler = new Scheduler($this->config);
-        $this->queueManager = new QueueManager($this->config, $this->scheduler);
+        $this->queueManager = new QueueManager($this->scheduler);
     });
 
     // Test that a BaseTask returns success status when execute() returns true
@@ -48,4 +48,15 @@ describe('Queue System', function () {
     test('QueueManager throws exception for invalid job class', function () {
         $this->queueManager->job(stdClass::class, []);
     })->throws(RuntimeException::class, 'Job class must implement Queueable');
+
+    // Test that QueueManager sets taskInstance correctly
+    test('QueueManager sets taskInstance correctly', function () {
+        $this->queueManager->job(SuccessTask::class, ['key' => 'value']);
+
+        $reflection = new ReflectionClass($this->queueManager);
+        $property = $reflection->getProperty('taskInstance');
+        $property->setAccessible(true);
+
+        expect($property->getValue($this->queueManager))->toBeInstanceOf(SuccessTask::class);
+    });
 });

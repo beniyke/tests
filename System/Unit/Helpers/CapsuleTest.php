@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Helpers\Capsule;
+use Helpers\Data\Capsule;
 
 describe('Capsule - Basic Operations', function () {
     test('creates empty capsule', function () {

@@ -19,7 +19,7 @@ use Permit\Services\RoleManagerService;
 use Testing\Support\DatabaseTestHelper;
 
 beforeEach(function () {
-    DatabaseTestHelper::setupTestEnvironment(['Permit'], true);
+    DatabaseTestHelper::setupTestEnvironment([], true);
     resolve(GateManagerService::class)->clear();
 });
 
@@ -280,5 +280,109 @@ describe('Permit Sync', function () {
         expect($adminSlugs)->toContain('users.view')
             ->and($adminSlugs)->toContain('users.create')
             ->and($adminSlugs)->toContain('users.delete');
+    });
+});
+
+describe('Smart Discovery & Assignment', function () {
+    test('can automatically discover permission metadata from config', function () {
+        // 'users.manage' is defined in permissions.php with label 'Users List' and group 'User Management'
+        $role = Permit::role()
+            ->slug('manager')
+            ->permissions(['users.manage'])
+            ->create();
+
+        $permission = Permission::findBySlug('users.manage');
+
+        expect($permission)->not->toBeNull()
+            ->and($permission->name)->toBe('Users List')
+            ->and($permission->group)->toBe('User Management');
+    });
+
+    test('can assign role to user fluently', function () {
+        $user = DatabaseTestHelper::createMockUser();
+
+        $role = Permit::role()
+            ->slug('staff')
+            ->name('Staff')
+            ->assign($user)
+            ->create();
+
+        expect($user->hasRole('staff'))->toBeTrue();
+    });
+
+    test('can check if user has any roles using hasRoles macro', function () {
+        $user = DatabaseTestHelper::createMockUser();
+
+        expect($user->hasRoles())->toBeFalse();
+
+        Permit::role()
+            ->slug('staff')
+            ->name('Staff')
+            ->assign($user)
+            ->create();
+
+        expect($user->hasRoles())->toBeTrue();
+    });
+
+    test('update() uses smart discovery for strings', function () {
+        $role = Permit::role()->slug('tester')->name('Tester')->create();
+
+        // Update with a string slug that exists in config
+        Permit::role()
+            ->id($role->id)
+            ->permissions(['roles.manage'])
+            ->update();
+
+        $permission = Permission::findBySlug('roles.manage');
+        expect($permission)->not->toBeNull()
+            ->and($permission->name)->toBe('Roles List');
+
+        expect($role->hasPermission('roles.manage'))->toBeTrue();
+    });
+});
+
+describe('Role User Retrieval', function () {
+    test('can get users with role and total count', function () {
+        $role = Permit::role()
+            ->slug('support')
+            ->name('Support')
+            ->create();
+
+        $user1 = DatabaseTestHelper::createMockUser(1, ['email' => 'user1@example.com']);
+        $user2 = DatabaseTestHelper::createMockUser(2, ['email' => 'user2@example.com']);
+        $user3 = DatabaseTestHelper::createMockUser(3, ['email' => 'user3@example.com']);
+
+        Permit::roles()->assignToUser($user1, 'support');
+        Permit::roles()->assignToUser($user2, 'support');
+
+        // Check total count via facade
+        $count = Permit::countUsersWithRole('support');
+        expect($count)->toBe(2);
+
+        // Check if role has users
+        expect(Permit::hasUsers('support'))->toBeTrue();
+
+        // Check total count via model relationship
+        expect($role->users()->count())->toBe(2);
+
+        // Check users list via facade
+        $users = Permit::getUsersWithRole('support');
+        expect($users)->toHaveCount(2);
+
+        $emails = array_column($users, 'email');
+        expect($emails)->toContain('user1@example.com')
+            ->and($emails)->toContain('user2@example.com')
+            ->and($emails)->not->toContain('user3@example.com');
+    });
+
+    test('returns zero and empty array for role with no users', function () {
+        Permit::role()
+            ->slug('empty')
+            ->name('Empty Role')
+            ->create();
+
+        expect(Permit::countUsersWithRole('empty'))->toBe(0);
+        expect(Permit::hasUsers('empty'))->toBeFalse();
+        expect(Permit::getUsersWithRole('empty'))->toBeEmpty();
     });
 });

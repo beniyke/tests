@@ -2,16 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Tests\Packages\Bridge\Unit;
-
 use Bridge\PersonalAccessToken;
 use Helpers\DateTimeHelper;
-use PHPUnit\Framework\TestCase;
 
-class PersonalAccessTokenTest extends TestCase
-{
-    public function test_can_check_ability_with_wildcard()
-    {
+describe('PersonalAccessToken', function () {
+    test('can check ability with wildcard', function () {
         $token = new PersonalAccessToken(
             id: 1,
             tokenableType: 'App\User',
@@ -21,13 +16,12 @@ class PersonalAccessTokenTest extends TestCase
             abilities: ['*']
         );
 
-        $this->assertTrue($token->can('read'));
-        $this->assertTrue($token->can('write'));
-        $this->assertTrue($token->can('delete'));
-    }
+        expect($token->can('read'))->toBeTrue();
+        expect($token->can('write'))->toBeTrue();
+        expect($token->can('delete'))->toBeTrue();
+    });
 
-    public function test_can_check_specific_ability()
-    {
+    test('can check specific ability', function () {
         $token = new PersonalAccessToken(
             id: 1,
             tokenableType: 'App\User',
@@ -37,13 +31,12 @@ class PersonalAccessTokenTest extends TestCase
             abilities: ['read', 'write']
         );
 
-        $this->assertTrue($token->can('read'));
-        $this->assertTrue($token->can('write'));
-        $this->assertFalse($token->can('delete'));
-    }
+        expect($token->can('read'))->toBeTrue();
+        expect($token->can('write'))->toBeTrue();
+        expect($token->can('delete'))->toBeFalse();
+    });
 
-    public function test_can_check_empty_abilities_grants_all()
-    {
+    test('can check empty abilities grants all', function () {
         $token = new PersonalAccessToken(
             id: 1,
             tokenableType: 'App\User',
@@ -53,12 +46,11 @@ class PersonalAccessTokenTest extends TestCase
             abilities: []
         );
 
-        $this->assertTrue($token->can('read'));
-        $this->assertTrue($token->can('anything'));
-    }
+        expect($token->can('read'))->toBeTrue();
+        expect($token->can('anything'))->toBeTrue();
+    });
 
-    public function test_is_expired_returns_false_when_no_expiry()
-    {
+    test('is expired returns false when no expiry', function () {
         $token = new PersonalAccessToken(
             id: 1,
             tokenableType: 'App\User',
@@ -69,11 +61,10 @@ class PersonalAccessTokenTest extends TestCase
             expiresAt: null
         );
 
-        $this->assertFalse($token->isExpired());
-    }
+        expect($token->isExpired())->toBeFalse();
+    });
 
-    public function test_is_expired_returns_true_when_expired()
-    {
+    test('is expired returns true when expired', function () {
         $token = new PersonalAccessToken(
             id: 1,
             tokenableType: 'App\User',
@@ -84,11 +75,10 @@ class PersonalAccessTokenTest extends TestCase
             expiresAt: DateTimeHelper::now()->subHours(1)
         );
 
-        $this->assertTrue($token->isExpired());
-    }
+        expect($token->isExpired())->toBeTrue();
+    });
 
-    public function test_is_expired_returns_false_when_not_expired()
-    {
+    test('is expired returns false when not expired', function () {
         $token = new PersonalAccessToken(
             id: 1,
             tokenableType: 'App\User',
@@ -99,6 +89,6 @@ class PersonalAccessTokenTest extends TestCase
             expiresAt: DateTimeHelper::now()->addHours(1)
         );
 
-        $this->assertFalse($token->isExpired());
-    }
-}
+        expect($token->isExpired())->toBeFalse();
+    });
+});

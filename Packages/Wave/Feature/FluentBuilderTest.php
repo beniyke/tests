@@ -22,8 +22,8 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     /** @var TestCase $this */
-    $this->bootPackage('Wave');
     $this->refreshDatabase();
+    $this->bootPackage('Wave', null, true);
 });
 
 it('can build plan fluently', function () {
@@ -267,7 +267,6 @@ it('can query other models with scopes', function () {
     // Refresh to be sure
     $activePlan = Plan::find($activePlan->id);
 
-    // Check IDs
     // Check IDs
     $activeIds = Plan::isActive()->pluck('id');
     if (is_object($activeIds) && method_exists($activeIds, 'toArray')) {

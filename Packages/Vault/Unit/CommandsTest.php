@@ -4,12 +4,20 @@ declare(strict_types=1);
 
 namespace Tests\Packages\Vault\Unit;
 
+use Helpers\File\Adapters\Interfaces\FileManipulationInterface;
+use Helpers\File\Adapters\Interfaces\FileMetaInterface;
+use Helpers\File\FileSystem;
+use Helpers\File\Paths;
 use Mockery;
 use RuntimeException;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 use Vault\Commands\AllocateQuotaCommand;
+use Vault\Commands\CheckUsageCommand;
+use Vault\Commands\CreateBackupCommand;
+use Vault\Commands\WipeStorageCommand;
 use Vault\Exceptions\InvalidQuotaException;
+use Vault\Services\BackupService;
 use Vault\Services\VaultManagerService;
 
 describe('AllocateQuotaCommand', function () {
@@ -75,7 +83,7 @@ describe('AllocateQuotaCommand', function () {
 describe('CheckUsageCommand', function () {
     beforeEach(function () {
         $this->vaultManager = Mockery::mock(VaultManagerService::class);
-        $this->command = new Vault\Commands\CheckUsageCommand($this->vaultManager);
+        $this->command = new CheckUsageCommand($this->vaultManager);
 
         $application = new Application();
         $application->add($this->command);
@@ -131,8 +139,8 @@ describe('CheckUsageCommand', function () {
 
 describe('CreateBackupCommand', function () {
     beforeEach(function () {
-        $this->backupService = Mockery::mock(Vault\Services\BackupService::class);
-        $this->command = new Vault\Commands\CreateBackupCommand($this->backupService);
+        $this->backupService = Mockery::mock(BackupService::class);
+        $this->command = new CreateBackupCommand($this->backupService);
 
         $application = new Application();
         $application->add($this->command);
@@ -145,8 +153,8 @@ describe('CreateBackupCommand', function () {
     });
 
     it('creates backup successfully', function () {
-        $tempFile = tempnam(sys_get_temp_dir(), 'vault_test');
-        file_put_contents($tempFile, 'test');
+        $tempFile = Paths::testPath('storage/vault_test_' . uniqid());
+        FileSystem::write($tempFile, 'test');
 
         $this->backupService->shouldReceive('create')
             ->once()
@@ -160,18 +168,18 @@ describe('CreateBackupCommand', function () {
         expect($this->commandTester->getStatusCode())->toBe(0);
         expect($this->commandTester->getDisplay())->toContain('Backup created successfully');
 
-        unlink($tempFile);
+        FileSystem::delete($tempFile);
     });
 });
 
 describe('WipeStorageCommand', function () {
     beforeEach(function () {
         $this->vaultManager = Mockery::mock(VaultManagerService::class);
-        $this->backupService = Mockery::mock(Vault\Services\BackupService::class);
-        $this->fileMeta = Mockery::mock(Helpers\File\Adapters\Interfaces\FileMetaInterface::class);
-        $this->fileManipulation = Mockery::mock(Helpers\File\Adapters\Interfaces\FileManipulationInterface::class);
+        $this->backupService = Mockery::mock(BackupService::class);
+        $this->fileMeta = Mockery::mock(FileMetaInterface::class);
+        $this->fileManipulation = Mockery::mock(FileManipulationInterface::class);
 
-        $this->command = new Vault\Commands\WipeStorageCommand(
+        $this->command = new WipeStorageCommand(
             $this->vaultManager,
             $this->backupService,
             $this->fileMeta,

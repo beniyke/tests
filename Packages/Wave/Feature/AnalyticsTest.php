@@ -14,7 +14,10 @@ use Wave\Wave;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    /** @var TestCase $this */
     $this->refreshDatabase();
+    $this->bootPackage('Wave', null, true);
+    config()->set('wave.tax.enabled', false);
 });
 
 it('calculates MRR correctly', function () {

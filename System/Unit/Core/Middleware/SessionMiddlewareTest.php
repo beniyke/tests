@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Middleware\Web\SessionMiddleware;
+use Core\Middleware\SessionMiddleware;
 use Core\Services\ConfigServiceInterface;
 use Helpers\Http\Request;
 use Helpers\Http\Response;

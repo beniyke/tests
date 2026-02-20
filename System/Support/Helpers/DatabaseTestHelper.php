@@ -64,11 +64,20 @@ class DatabaseTestHelper
     {
         $migrationPath = $basePath ?? Paths::basePath("packages/{$packageName}/Database/Migrations");
 
+        fwrite(STDERR, "DEBUG: Running migrations for $packageName\n");
+        fwrite(STDERR, "DEBUG: Path: $migrationPath\n");
+        fwrite(STDERR, "DEBUG: Is Dir: " . (is_dir($migrationPath) ? 'YES' : 'NO') . "\n");
+
         if (!is_dir($migrationPath)) {
+            fwrite(STDERR, "DEBUG: Directory not found\n");
+
             return;
         }
 
         $files = glob($migrationPath . '/*.php');
+        fwrite(STDERR, "DEBUG: Files found: " . ($files === false ? 'FALSE' : count($files)) . "\n");
+        fwrite(STDERR, "DEBUG: Glob pattern: " . $migrationPath . '/*.php' . "\n");
+
         if ($files === false) {
             return;
         }

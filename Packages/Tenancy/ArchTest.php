@@ -8,7 +8,8 @@ use Database\BaseModel;
 
 arch('tenancy models')
     ->expect('Tenancy\Models')
-    ->toExtend(BaseModel::class);
+    ->toExtend(BaseModel::class)
+    ->ignoring('Tenancy\Models\Traits');
 
 arch('strict types')
     ->expect('Tenancy')

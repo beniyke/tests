@@ -8,7 +8,6 @@ use Money\Money;
 use Testing\Concerns\RefreshDatabase;
 use Testing\Support\DatabaseTestHelper;
 use Tests\TestCase;
-use Wallet\Services\WalletManagerService;
 use Wave\Enums\InvoiceStatus;
 use Wave\Enums\SubscriptionStatus;
 use Wave\Models\Invoice;
@@ -20,12 +19,8 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     /** @var TestCase $this */
-    DatabaseTestHelper::setupTestEnvironment(['Audit', 'Wallet', 'Pay', 'Wave'], true);
-    // Use the standard way to boot the package
-    $this->bootPackage('Wave');
-    $this->fakeAudit();
-
-    $this->walletManager = resolve(WalletManagerService::class);
+    $this->refreshDatabase();
+    $this->bootPackage('Wave', null, true);
 });
 
 test('can create plan and subscribe', function () {

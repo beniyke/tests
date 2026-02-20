@@ -36,7 +36,8 @@ describe('QueryCollector', function () {
     beforeEach(function () {
         // Setup in-memory DB for query logging
         $connection = Connection::configure('sqlite::memory:')->connect();
-        DB::setConnection($connection);
+        DB::setDefaultConnection($connection);
+        Connection::enableLogging();
         Connection::clearQueryLog();
     });
 

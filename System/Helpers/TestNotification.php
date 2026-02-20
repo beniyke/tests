@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\System\Helpers;
 
-use Helpers\Data;
+use Helpers\Data\Data;
 use Mail\Contracts\Mailable;
 use Mail\Core\EmailBuilder;
 

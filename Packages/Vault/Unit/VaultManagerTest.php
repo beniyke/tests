@@ -48,49 +48,24 @@ describe('VaultManagerService', function () {
         it('allocates quota for new account', function () {
             [$connection, $paths, $fileMeta, $fileManip, $fileTracker, $vaultManager] = setupVaultMocks();
 
-            $connection->shouldReceive('transaction')
-                ->once()
-                ->andReturnUsing(function ($callback) {
-                    return $callback();
-                });
-
             $builder = Mockery::mock(Builder::class);
 
             $connection->shouldReceive('table')
                 ->with('vault_quota')
                 ->andReturn($builder);
 
-            $builder->shouldReceive('where')
-                ->with('account_id', 'account-123')
-                ->andReturnSelf();
-
-            $builder->shouldReceive('first')
-                ->andReturn(null);
-
-            $builder->shouldReceive('insert')
+            $builder->shouldReceive('updateOrInsert')
                 ->once()
-                ->with(Mockery::on(function ($data) {
-                    return $data['account_id'] === 'account-123'
-                        && $data['quota_bytes'] === 1073741824 // 1024MB
-                        && $data['used_bytes'] === 0;
-                }))
+                ->with(
+                    ['account_id' => 'account-123'],
+                    Mockery::on(function ($data) {
+                        return $data['quota_bytes'] === 1073741824 // 1024MB
+                            && !empty($data['refid']);
+                    })
+                )
                 ->andReturn(true);
 
-            $paths->shouldReceive('basePath')
-                ->once()
-                ->andReturn('/path/to/storage/vault');
 
-            $fileMeta->shouldReceive('isDir')
-                ->once()
-                ->andReturn(false);
-
-            // VaultManagerService calls $this->fileManipulation->mkdir($path, 0755, true)
-            // But usually tests don't fail on unmocked void methods unless strict?
-            // Let's verify if we need to mock it.
-            $fileManip->shouldReceive('mkdir')
-                ->once()
-                ->with(Mockery::any(), 0755, true) // path is dynamic
-                ->andReturn(true);
 
             $vaultManager->allocate('account-123', 1024);
         });
@@ -98,11 +73,7 @@ describe('VaultManagerService', function () {
         it('updates quota for existing account', function () {
             [$connection, $paths, $fileMeta, $fileManip, $fileTracker, $vaultManager] = setupVaultMocks();
 
-            $connection->shouldReceive('transaction')
-                ->once()
-                ->andReturnUsing(function ($callback) {
-                    return $callback();
-                });
+
 
             $builder = Mockery::mock(Builder::class);
 
@@ -110,23 +81,15 @@ describe('VaultManagerService', function () {
                 ->with('vault_quota')
                 ->andReturn($builder);
 
-            $builder->shouldReceive('where')
-                ->with('account_id', 'account-123')
-                ->andReturnSelf();
-
-            $builder->shouldReceive('first')
-                ->andReturn((object)[
-                    'account_id' => 'account-123',
-                    'quota_bytes' => 1073741824,
-                    'used_bytes' => 0
-                ]);
-
-            $builder->shouldReceive('update')
+            $builder->shouldReceive('updateOrInsert')
                 ->once()
-                ->with(Mockery::on(function ($data) {
-                    return $data['quota_bytes'] === 2147483648; // 2048MB
-                }))
-                ->andReturn(1);
+                ->with(
+                    ['account_id' => 'account-123'],
+                    Mockery::on(function ($data) {
+                        return $data['quota_bytes'] === 2147483648; // 2048MB
+                    })
+                )
+                ->andReturn(true);
 
             $vaultManager->allocate('account-123', 2048);
         });
@@ -222,7 +185,7 @@ describe('VaultManagerService', function () {
                     'used_bytes' => 1073741824
                 ]);
 
-            $result = $vaultManager->canUpload('account-123', 104857600); // 100MB
+            $result = $vaultManager->canUpload(104857600, 'account-123'); // 100MB
 
             expect($result)->toBeTrue();
         });
@@ -247,7 +210,7 @@ describe('VaultManagerService', function () {
                     'used_bytes' => 1073741824
                 ]);
 
-            $result = $vaultManager->canUpload('account-123', 1);
+            $result = $vaultManager->canUpload(1, 'account-123');
 
             expect($result)->toBeFalse();
         });
@@ -291,7 +254,7 @@ describe('VaultManagerService', function () {
                 ->once()
                 ->andReturn(true);
 
-            $vaultManager->trackUpload('account-123', 'file.pdf', 104857600);
+            $vaultManager->trackUpload('file.pdf', 104857600, 'account-123');
         });
 
         it('throws QuotaExceededException when quota exceeded', function () {
@@ -323,7 +286,7 @@ describe('VaultManagerService', function () {
                     'used_bytes' => 1073741824
                 ]);
 
-            expect(fn () => $vaultManager->trackUpload('account-123', 'file.pdf', 1))
+            expect(fn () => $vaultManager->trackUpload('file.pdf', 1, 'account-123'))
                 ->toThrow(QuotaExceededException::class);
         });
     });
@@ -382,11 +345,14 @@ describe('VaultManagerService', function () {
                 'quota_bytes' => 5368709120,
                 'used_bytes' => 1073741824
             ]);
-            $quotaBuilder->shouldReceive('update')->once()->andReturn(1);
+            $quotaBuilder->shouldReceive('decrement')
+                ->once()
+                ->with('used_bytes', 104857600, Mockery::type('array'))
+                ->andReturn(1);
 
             $fileTracker->shouldReceive('untrack')->once();
 
-            $vaultManager->trackDeletion('account-123', 'file.pdf');
+            $vaultManager->trackDeletion('file.pdf', 'account-123');
         });
     });
 
@@ -399,58 +365,26 @@ describe('VaultManagerService', function () {
                 ->andReturn('/path/to/storage/vault');
 
             $fileMeta->shouldReceive('isDir')
-                ->twice()
-                ->andReturn(true, false);
+                ->once()
+                ->with('/path/to/storage/vault')
+                ->andReturn(true);
 
-            // calculateDirectorySize uses recursive iterator.
-            // Mocking file system iterators is hell.
-            // But calculateDirectorySize is private method of VaultManagerService.
-            // We can't mock private method easily on the object we are testing.
-            // However, VaultManagerService interacts with FileMetaInterface only?
-            // No, it uses 'new RecursiveDirectoryIterator'. That is hardcoded.
-            // Wait, the test I saw had `getDirectorySize` mock on $fileMeta.
-            // But `VaultManager.php` code I saw (Step 1279) has `calculateDirectorySize` method that instantiates iterators internally!
-            // It does NOT use `$this->fileMeta->getDirectorySize`.
-            // So the previous test was mocking a method that IS NOT CALLED.
-
-            // To fix this test properly without refactoring VaultManagerService to use a FileSystem helper for directory size:
-            // We would need to create real files.
-            // Or we assume the user intends to refactor VaultManagerService to use FileMetaInterface for that.
-            // Given I cannot refactor VaultManagerService logic easily right now (it's "private"),
-            // I will skip the internal calculation check or assume it returns 0 if no files.
-
-            // Actually, `VaultManagerService` calls `new RecursiveIteratorIterator(...)`.
-            // The test provided by the user had `$this->fileMeta->getDirectorySize`.
-            // This implies the test was written for a different version of the code or expected a refactor.
-            // I should refactor `VaultManagerService` to use `$this->fileMeta->size($path)` if it's a directory?
-            // No, `size` usually is for files.
-
-            // Let's modify VaultManagerService to use a protected method for calculation that we can partial mock?
-            // Use `Mockery::mock(VaultManagerService::class)->makePartial()->shouldAllowMockingProtectedMethods()`.
-            // But we instantiate it manually.
-
-            // Plan B: Refactor `recalculateUsage` in `VaultManagerService` to use a helper that we can mock?
-            // Note: skipping verification of calculateDirectorySize logic as it uses internal iterators
-            // that cannot be easily mocked without refactoring VaultManagerService.
-            // We focus on the DB update being called.
+            $fileMeta->shouldReceive('directorySize')
+                ->once()
+                ->with('/path/to/storage/vault')
+                ->andReturn(104857600); // 100MB
 
             $connection->shouldReceive('transaction')->andReturnUsing(fn ($cb) => $cb());
 
             $builder = Mockery::mock(Builder::class);
             $connection->shouldReceive('table')->with('vault_quota')->andReturn($builder);
             $builder->shouldReceive('where')->with('account_id', 'account-123')->andReturnSelf();
-            // The calculated size might be 0 because the path does not exist in real FS or we can't mock iterator.
-            // So we just expect 'update' to be called with some data.
+
             $builder->shouldReceive('update')
                 ->once()
                 ->with(Mockery::on(function ($data) {
-                    return $data['used_bytes'] === 0 && !empty($data['updated_at']);
+                    return $data['used_bytes'] === 104857600 && !empty($data['updated_at']);
                 }));
-
-            // Handle potential RecursiveIteratorIterator exception if directory doesn't exist
-            // We can wrap this in try catch or assume it fails.
-            // If the test framework reports 'BadMethodCallException' on TABLE, it means it reached 'table'.
-            // Which means verifyDirectorySize passed? Strange.
 
             $vaultManager->recalculateUsage('account-123');
         });

@@ -174,6 +174,13 @@ describe('Request', function () {
 
         expect($request->isCustom())->toBe('custom');
     });
+
+    test('isInternalUrl detects local urls', function () {
+        expect($this->request->isInternalUrl('/local/path'))->toBeTrue();
+        expect($this->request->isInternalUrl('local/path'))->toBeTrue();
+        expect($this->request->isInternalUrl('http://localhost/test'))->toBeTrue();
+        expect($this->request->isInternalUrl('https://malicious.com'))->toBeFalse();
+    });
 });
 
 
@@ -203,6 +210,18 @@ describe('Response', function () {
     test('creates redirect response', function () {
         $response = new Response();
         $result = $response->redirect('/home');
+
+        expect($result)->toBeInstanceOf(Response::class);
+    });
+
+    test('blocks external redirect by default', function () {
+        $response = new Response();
+        $response->redirect('https://malicious.com');
+    })->throws(InvalidArgumentException::class, 'External redirect to "https://malicious.com" is not allowed.');
+
+    test('allows external redirect when explicitly permitted', function () {
+        $response = new Response();
+        $result = $response->redirect('https://trusted.com', 302, true);
 
         expect($result)->toBeInstanceOf(Response::class);
     });

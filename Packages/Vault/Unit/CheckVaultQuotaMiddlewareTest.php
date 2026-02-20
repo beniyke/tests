@@ -66,7 +66,7 @@ describe('CheckVaultQuotaMiddleware', function () {
             ->andReturn(['document' => $file]);
 
         $this->vaultManager->shouldReceive('canUpload')
-            ->with('account-123', 104857600)
+            ->with(104857600, 'account-123')
             ->andReturn(true);
 
         $result = $this->middleware->handle($this->request, $this->response, $this->next);
@@ -91,7 +91,7 @@ describe('CheckVaultQuotaMiddleware', function () {
             ->andReturn(['document' => $file]);
 
         $this->vaultManager->shouldReceive('canUpload')
-            ->with('account-123', 104857600)
+            ->with(104857600, 'account-123')
             ->andReturn(false);
 
         $this->response->shouldReceive('json')
@@ -124,7 +124,7 @@ describe('CheckVaultQuotaMiddleware', function () {
             ->andReturn(['document' => $file]);
 
         $this->vaultManager->shouldReceive('canUpload')
-            ->with('account-123', 104857600)
+            ->with(104857600, 'account-123')
             ->andThrow(new QuotaExceededException('account-123', 104857600, 0));
 
         $this->response->shouldReceive('json')
@@ -163,7 +163,7 @@ describe('CheckVaultQuotaMiddleware', function () {
             ]);
 
         $this->vaultManager->shouldReceive('canUpload')
-            ->with('account-123', 104857600) // Total 100MB
+            ->with(104857600, 'account-123') // Total 100MB
             ->andReturn(true);
 
         $result = $this->middleware->handle($this->request, $this->response, $this->next);
@@ -193,7 +193,7 @@ describe('CheckVaultQuotaMiddleware', function () {
             ]);
 
         $this->vaultManager->shouldReceive('canUpload')
-            ->with('account-123', 104857600)
+            ->with(104857600, 'account-123')
             ->andReturn(true);
 
         $result = $this->middleware->handle($this->request, $this->response, $this->next);

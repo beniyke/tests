@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Packages\Bridge\Unit;
 
-use Bridge\Contracts\TokenableInterface;
 use Bridge\PersonalAccessToken;
 use Bridge\Repositories\DatabaseTokenRepository;
 use DateTimeImmutable;
 use Mockery;
+use Security\Auth\Contracts\Tokenable;
 use Testing\Support\DatabaseTestHelper;
 
 beforeEach(function () {
@@ -149,9 +149,9 @@ describe('DatabaseTokenRepository', function () {
 /**
  * Helper function to create a mock tokenable.
  */
-function createMockTokenable(int|string $id, string $type): TokenableInterface
+function createMockTokenable(int|string $id, string $type): Tokenable
 {
-    $mock = Mockery::mock(TokenableInterface::class);
+    $mock = Mockery::mock(Tokenable::class);
     $mock->shouldReceive('getTokenableId')->andReturn($id);
     $mock->shouldReceive('getTokenableType')->andReturn($type);
 

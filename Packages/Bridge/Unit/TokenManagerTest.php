@@ -2,213 +2,198 @@
 
 declare(strict_types=1);
 
-namespace Tests\Packages\Bridge\Unit;
-
-use Bridge\Contracts\TokenableInterface;
 use Bridge\Contracts\TokenRepositoryInterface;
 use Bridge\PersonalAccessToken;
 use Bridge\TokenManager;
 use Helpers\DateTimeHelper;
-use PHPUnit\Framework\TestCase;
+use Security\Auth\Contracts\Authenticatable;
+use Security\Auth\Contracts\Tokenable;
 
-class TokenManagerTest extends TestCase
-{
-    private TokenRepositoryInterface $repository;
+beforeEach(function () {
+    $this->repository = mock(TokenRepositoryInterface::class);
+    $this->manager = new TokenManager($this->repository);
+});
 
-    private TokenManager $manager;
-
-    protected function setUp(): void
+if (! function_exists('createMockTokenable')) {
+    function createMockTokenable(int|string $id, string $type)
     {
-        parent::setUp();
-        $this->repository = $this->createMock(TokenRepositoryInterface::class);
-        $this->manager = new TokenManager($this->repository);
-    }
-
-    public function test_create_token_generates_valid_token_format()
-    {
-        $tokenable = $this->createMockTokenable(1, 'App\User');
-
-        $this->repository->expects($this->once())
-            ->method('createToken')
-            ->willReturn(new PersonalAccessToken(
-                id: 1,
-                tokenableType: 'App\User',
-                tokenableId: 1,
-                name: 'test-token',
-                hashedToken: 'hashed',
-                abilities: ['*']
-            ));
-
-        $token = $this->manager->createToken($tokenable, 'test-token');
-
-        // Token format should be: {id}|{secret}
-        $this->assertStringContainsString('|', $token);
-        $parts = explode('|', $token);
-        $this->assertCount(2, $parts);
-        $this->assertEquals('1', $parts[0]);
-        $this->assertNotEmpty($parts[1]);
-    }
-
-    public function test_authenticate_with_valid_token()
-    {
-        $secretToken = 'test-secret-token';
-        $hashedToken = hash('sha256', $secretToken);
-        $plainTextToken = '1|' . $secretToken;
-
-        $accessToken = new PersonalAccessToken(
-            id: 1,
-            tokenableType: 'App\User',
-            tokenableId: 1,
-            name: 'test-token',
-            hashedToken: $hashedToken,
-            abilities: ['*']
-        );
-
-        $this->repository->expects($this->once())
-            ->method('findToken')
-            ->with(1)
-            ->willReturn($accessToken);
-
-        $mockUser = $this->createMockTokenable(1, 'App\User');
-
-        $result = $this->manager->authenticate($plainTextToken, function ($type, $id) use ($mockUser) {
-            return $mockUser;
-        });
-
-        $this->assertSame($mockUser, $result);
-    }
-
-    public function test_authenticate_with_invalid_token_format()
-    {
-        $result = $this->manager->authenticate('invalid-token', fn () => null);
-
-        $this->assertNull($result);
-    }
-
-    public function test_authenticate_with_non_existent_token()
-    {
-        $this->repository->expects($this->once())
-            ->method('findToken')
-            ->with(999)
-            ->willReturn(null);
-
-        $result = $this->manager->authenticate('999|secret', fn () => null);
-
-        $this->assertNull($result);
-    }
-
-    public function test_authenticate_with_expired_token()
-    {
-        $secretToken = 'test-secret-token';
-        $hashedToken = hash('sha256', $secretToken);
-        $plainTextToken = '1|' . $secretToken;
-
-        $accessToken = new PersonalAccessToken(
-            id: 1,
-            tokenableType: 'App\User',
-            tokenableId: 1,
-            name: 'test-token',
-            hashedToken: $hashedToken,
-            abilities: ['*'],
-            expiresAt: DateTimeHelper::now()->subHours(1)
-        );
-
-        $this->repository->expects($this->once())
-            ->method('findToken')
-            ->with(1)
-            ->willReturn($accessToken);
-
-        $this->repository->expects($this->once())
-            ->method('deleteToken')
-            ->with(1);
-
-        $result = $this->manager->authenticate($plainTextToken, fn () => null);
-
-        $this->assertNull($result);
-    }
-
-    public function test_authenticate_with_wrong_secret()
-    {
-        $correctSecret = 'correct-secret';
-        $wrongSecret = 'wrong-secret';
-        $hashedToken = hash('sha256', $correctSecret);
-        $plainTextToken = '1|' . $wrongSecret;
-
-        $accessToken = new PersonalAccessToken(
-            id: 1,
-            tokenableType: 'App\User',
-            tokenableId: 1,
-            name: 'test-token',
-            hashedToken: $hashedToken,
-            abilities: ['*']
-        );
-
-        $this->repository->expects($this->once())
-            ->method('findToken')
-            ->with(1)
-            ->willReturn($accessToken);
-
-        $result = $this->manager->authenticate($plainTextToken, fn () => null);
-
-        $this->assertNull($result);
-    }
-
-    public function test_check_ability_with_valid_token_and_ability()
-    {
-        $secretToken = 'test-secret-token';
-        $hashedToken = hash('sha256', $secretToken);
-        $plainTextToken = '1|' . $secretToken;
-
-        $accessToken = new PersonalAccessToken(
-            id: 1,
-            tokenableType: 'App\User',
-            tokenableId: 1,
-            name: 'test-token',
-            hashedToken: $hashedToken,
-            abilities: ['read', 'write']
-        );
-
-        $this->repository->expects($this->once())
-            ->method('findToken')
-            ->with(1)
-            ->willReturn($accessToken);
-
-        $result = $this->manager->checkAbility($plainTextToken, 'read');
-
-        $this->assertTrue($result);
-    }
-
-    public function test_check_ability_with_missing_ability()
-    {
-        $secretToken = 'test-secret-token';
-        $hashedToken = hash('sha256', $secretToken);
-        $plainTextToken = '1|' . $secretToken;
-
-        $accessToken = new PersonalAccessToken(
-            id: 1,
-            tokenableType: 'App\User',
-            tokenableId: 1,
-            name: 'test-token',
-            hashedToken: $hashedToken,
-            abilities: ['read']
-        );
-
-        $this->repository->expects($this->once())
-            ->method('findToken')
-            ->with(1)
-            ->willReturn($accessToken);
-
-        $result = $this->manager->checkAbility($plainTextToken, 'delete');
-
-        $this->assertFalse($result);
-    }
-
-    private function createMockTokenable(int|string $id, string $type): TokenableInterface
-    {
-        $mock = $this->createMock(TokenableInterface::class);
-        $mock->method('getTokenableId')->willReturn($id);
-        $mock->method('getTokenableType')->willReturn($type);
+        $mock = Mockery::mock(Authenticatable::class . ', ' . Tokenable::class);
+        $mock->shouldReceive('getTokenableId')->andReturn($id)->byDefault();
+        $mock->shouldReceive('getTokenableType')->andReturn($type)->byDefault();
+        $mock->shouldReceive('getAuthId')->andReturn($id)->byDefault();
+        $mock->shouldReceive('withAccessToken')->andReturnSelf()->byDefault();
 
         return $mock;
     }
 }
+
+test('create token generates valid token format', function () {
+    $tokenable = createMockTokenable(1, 'App\User');
+
+    $this->repository->shouldReceive('createToken')
+        ->once()
+        ->andReturn(new PersonalAccessToken(
+            id: 1,
+            tokenableType: 'App\User',
+            tokenableId: 1,
+            name: 'test-token',
+            hashedToken: 'hashed',
+            abilities: ['*']
+        ));
+
+    $token = $this->manager->createToken($tokenable, 'test-token');
+
+    // Token format should be: {id}|{secret}
+    expect($token)->toContain('|');
+    $parts = explode('|', $token);
+    expect($parts)->toHaveCount(2);
+    expect($parts[0])->toBe('1');
+    expect($parts[1])->not->toBeEmpty();
+});
+
+test('authenticate with valid token', function () {
+    $secretToken = 'test-secret-token';
+    $hashedToken = hash('sha256', $secretToken);
+    $plainTextToken = '1|' . $secretToken;
+
+    $accessToken = new PersonalAccessToken(
+        id: 1,
+        tokenableType: 'App\User',
+        tokenableId: 1,
+        name: 'test-token',
+        hashedToken: $hashedToken,
+        abilities: ['*']
+    );
+
+    $this->repository->shouldReceive('findToken')
+        ->once()
+        ->with(1)
+        ->andReturn($accessToken);
+
+    $mockUser = createMockTokenable(1, 'App\User');
+
+    $result = $this->manager->authenticate($plainTextToken, function ($type, $id) use ($mockUser) {
+        return $mockUser;
+    });
+
+    expect($result)->toBe($mockUser);
+});
+
+test('authenticate with invalid token format', function () {
+    $result = $this->manager->authenticate('invalid-token', fn () => null);
+
+    expect($result)->toBeNull();
+});
+
+test('authenticate with non existent token', function () {
+    $this->repository->shouldReceive('findToken')
+        ->once()
+        ->with(999)
+        ->andReturn(null);
+
+    $result = $this->manager->authenticate('999|secret', fn () => null);
+
+    expect($result)->toBeNull();
+});
+
+test('authenticate with expired token', function () {
+    $secretToken = 'test-secret-token';
+    $hashedToken = hash('sha256', $secretToken);
+    $plainTextToken = '1|' . $secretToken;
+
+    $accessToken = new PersonalAccessToken(
+        id: 1,
+        tokenableType: 'App\User',
+        tokenableId: 1,
+        name: 'test-token',
+        hashedToken: $hashedToken,
+        abilities: ['*'],
+        expiresAt: DateTimeHelper::now()->subHours(1)
+    );
+
+    $this->repository->shouldReceive('findToken')
+        ->once()
+        ->with(1)
+        ->andReturn($accessToken);
+
+    $this->repository->shouldReceive('deleteToken')
+        ->once()
+        ->with(1);
+
+    $result = $this->manager->authenticate($plainTextToken, fn () => null);
+
+    expect($result)->toBeNull();
+});
+
+test('authenticate with wrong secret', function () {
+    $correctSecret = 'correct-secret';
+    $wrongSecret = 'wrong-secret';
+    $hashedToken = hash('sha256', $correctSecret);
+    $plainTextToken = '1|' . $wrongSecret;
+
+    $accessToken = new PersonalAccessToken(
+        id: 1,
+        tokenableType: 'App\User',
+        tokenableId: 1,
+        name: 'test-token',
+        hashedToken: $hashedToken,
+        abilities: ['*']
+    );
+
+    $this->repository->shouldReceive('findToken')
+        ->once()
+        ->with(1)
+        ->andReturn($accessToken);
+
+    $result = $this->manager->authenticate($plainTextToken, fn () => null);
+
+    expect($result)->toBeNull();
+});
+
+test('check ability with valid token and ability', function () {
+    $secretToken = 'test-secret-token';
+    $hashedToken = hash('sha256', $secretToken);
+    $plainTextToken = '1|' . $secretToken;
+
+    $accessToken = new PersonalAccessToken(
+        id: 1,
+        tokenableType: 'App\User',
+        tokenableId: 1,
+        name: 'test-token',
+        hashedToken: $hashedToken,
+        abilities: ['read', 'write']
+    );
+
+    $this->repository->shouldReceive('findToken')
+        ->once()
+        ->with(1)
+        ->andReturn($accessToken);
+
+    $result = $this->manager->checkAbility($plainTextToken, 'read');
+
+    expect($result)->toBeTrue();
+});
+
+test('check ability with missing ability', function () {
+    $secretToken = 'test-secret-token';
+    $hashedToken = hash('sha256', $secretToken);
+    $plainTextToken = '1|' . $secretToken;
+
+    $accessToken = new PersonalAccessToken(
+        id: 1,
+        tokenableType: 'App\User',
+        tokenableId: 1,
+        name: 'test-token',
+        hashedToken: $hashedToken,
+        abilities: ['read']
+    );
+
+    $this->repository->shouldReceive('findToken')
+        ->once()
+        ->with(1)
+        ->andReturn($accessToken);
+
+    $result = $this->manager->checkAbility($plainTextToken, 'delete');
+
+    expect($result)->toBeFalse();
+});

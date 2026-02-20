@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use Metric\Models\OneOnOne;
+use Onboard\Enums\OnboardStatus;
 use Onboard\Models\Onboarding;
 use Onboard\Models\Task;
 use Onboard\Models\Template;
@@ -10,8 +12,9 @@ use Onboard\Onboard;
 use Testing\Support\DatabaseTestHelper;
 
 beforeEach(function () {
-    DatabaseTestHelper::setupTestEnvironment(['Onboard', 'Audit'], true);
+    DatabaseTestHelper::setupTestEnvironment(['Onboard', 'Audit', 'Metric'], true);
     $this->bootPackage('Onboard');
+    $this->bootPackage('Metric', null, true);
     $this->fakeAudit();
 
     $this->user = User::create([
@@ -45,7 +48,7 @@ test('it can start onboarding for a user', function () {
         ->start();
 
     expect($onboarding)->toBeInstanceOf(Onboarding::class);
-    expect($onboarding->status)->toBe('in_progress');
+    expect($onboarding->status)->toBe(OnboardStatus::IN_PROGRESS);
     expect($onboarding->user_id)->toBe($this->user->id);
 });
 
@@ -62,9 +65,15 @@ test('it completes onboarding when all required tasks are done', function () {
     $onboarding = Onboard::onboarding()->for($this->user)->using($this->template)->start();
 
     Onboard::completeTask($this->user, $this->task);
+    $onboarding = $onboarding->fresh();
 
-    expect($onboarding->fresh()->status)->toBe('completed');
-    expect($onboarding->fresh()->completed_at)->not->toBeNull();
+    expect($onboarding->status)->toBe(OnboardStatus::COMPLETED);
+    expect($onboarding->completed_at)->not->toBeNull();
+
+    // Verify handoff to Metric (should create a 1-on-1)
+    $oneOnOne = OneOnOne::query()->where('user_id', $this->user->id)->first();
+    expect($oneOnOne)->not->toBeNull();
+    expect($oneOnOne->agenda)->toContain('Onboarding Handoff');
 });
 
 test('it tracks progress percentage', function () {

@@ -14,6 +14,7 @@ beforeEach(function () {
 
 afterEach(function () {
     if ($this->connection) {
+        Connection::disableLogging();
         Connection::clearQueryLog();
     }
 });
@@ -300,6 +301,7 @@ describe('Connection - Database Introspection', function () {
 
 describe('Connection - Query Logging', function () {
     test('logs executed queries', function () {
+        Connection::enableLogging();
         Connection::clearQueryLog();
 
         $this->connection->statement('CREATE TABLE test_users (id INTEGER PRIMARY KEY)');
@@ -312,6 +314,7 @@ describe('Connection - Query Logging', function () {
     });
 
     test('query log includes execution time', function () {
+        Connection::enableLogging();
         Connection::clearQueryLog();
 
         $this->connection->statement('CREATE TABLE test_users (id INTEGER PRIMARY KEY)');
@@ -324,6 +327,7 @@ describe('Connection - Query Logging', function () {
     });
 
     test('clears query log', function () {
+        Connection::enableLogging();
         $this->connection->execute('SELECT 1');
 
         Connection::clearQueryLog();

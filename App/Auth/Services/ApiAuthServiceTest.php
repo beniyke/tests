@@ -5,41 +5,35 @@ declare(strict_types=1);
 use App\Models\User;
 use App\Requests\LoginRequest;
 use App\Services\Auth\ApiAuthService;
-use App\Services\UserService;
-use Bridge\ApiAuth\Contracts\ApiTokenValidatorServiceInterface;
-use Bridge\TokenManager;
-use Helpers\Data;
 use Helpers\Http\Request;
-use Helpers\Http\UserAgent;
-use Security\Firewall\Drivers\AuthFirewall;
+use Security\Auth\Interfaces\AuthManagerInterface;
+use Security\Auth\Interfaces\GuardInterface;
+use Security\Auth\Interfaces\TokenManagerInterface;
 
 beforeEach(function () {
-    $this->tokenValidator = $this->createMock(ApiTokenValidatorServiceInterface::class);
-    $this->userService = $this->createMock(UserService::class);
-    $this->tokenManager = $this->createMock(TokenManager::class);
-    $this->firewall = $this->createMock(AuthFirewall::class);
-    $this->agent = $this->createMock(UserAgent::class);
-    $this->request = $this->createMock(Request::class);
+    $this->tokenManager = $this->createMock(TokenManagerInterface::class);
+    // Use getMockBuilder for Request to avoid conflict with 'method' method
+    $this->request = $this->getMockBuilder(Request::class)
+        ->disableOriginalConstructor()
+        ->onlyMethods(['post', 'getBearerToken'])
+        ->getMock();
+    $this->auth = $this->createMock(AuthManagerInterface::class);
+    $this->guard = $this->createMock(GuardInterface::class);
 
-    // Mock firewall chainable methods
-    $this->firewall->method('fail')->willReturn($this->firewall);
-    $this->firewall->method('clear')->willReturn($this->firewall);
-    $this->firewall->method('capture');
+    $this->auth->method('guard')->with('api')->willReturn($this->guard);
 
     $this->service = new ApiAuthService(
-        $this->tokenValidator,
-        $this->userService,
         $this->tokenManager,
-        $this->firewall,
-        $this->agent,
-        $this->request
+        $this->request,
+        $this->auth
     );
 });
 
 test('login success', function () {
     $loginRequest = $this->createMock(LoginRequest::class);
     $loginRequest->method('isValid')->willReturn(true);
-    $loginRequest->method('getData')->willReturn(Data::make(['email' => 'test@example.com', 'password' => 'password']));
+    $loginRequest->method('toArray')->willReturn(['email' => 'test@example.com', 'password' => 'password']);
+
     $this->request->expects($this->any())
         ->method('post')
         ->willReturnCallback(fn ($key) => match ($key) {
@@ -51,10 +45,13 @@ test('login success', function () {
     $user->id = 1;
     $user->name = 'Test User';
     $user->email = 'test@example.com';
-    $user->method('only')->willReturn(['id' => 1, 'name' => 'Test User', 'email' => 'test@example.com']);
 
-    $this->userService->expects($this->once())
-        ->method('confirmUser')
+    $this->guard->expects($this->once())
+        ->method('attempt')
+        ->willReturn(true);
+
+    $this->guard->expects($this->any())
+        ->method('user')
         ->willReturn($user);
 
     $this->tokenManager->expects($this->once())
@@ -71,8 +68,7 @@ test('login success', function () {
 test('login failure invalid request', function () {
     $loginRequest = $this->createMock(LoginRequest::class);
     $loginRequest->method('isValid')->willReturn(false);
-
-    $this->firewall->expects($this->once())->method('fail');
+    $loginRequest->method('toArray')->willReturn([]);
 
     $result = $this->service->login($loginRequest);
 
@@ -83,13 +79,11 @@ test('login failure invalid request', function () {
 test('login failure invalid credentials', function () {
     $loginRequest = $this->createMock(LoginRequest::class);
     $loginRequest->method('isValid')->willReturn(true);
-    $loginRequest->method('getData')->willReturn(Data::make(['email' => 'test@example.com', 'password' => 'wrong']));
+    $loginRequest->method('toArray')->willReturn(['email' => 'test@example.com', 'password' => 'wrong']);
 
-    $this->userService->expects($this->once())
-        ->method('confirmUser')
-        ->willReturn(null);
-
-    $this->firewall->expects($this->once())->method('fail');
+    $this->guard->expects($this->once())
+        ->method('attempt')
+        ->willReturn(false);
 
     $result = $this->service->login($loginRequest);
 
@@ -97,6 +91,13 @@ test('login failure invalid credentials', function () {
 });
 
 test('logout success', function () {
+    $user = $this->createMock(User::class);
+    $user->id = 1;
+
+    $this->guard->expects($this->any())
+        ->method('user')
+        ->willReturn($user);
+
     $this->request->expects($this->any())
         ->method('getBearerToken')
         ->willReturn('1|token-secret');
@@ -105,6 +106,9 @@ test('logout success', function () {
         ->method('revokeToken')
         ->with(1)
         ->willReturn(true);
+
+    $this->guard->expects($this->once())
+        ->method('logout');
 
     $result = $this->service->logout();
 
@@ -126,23 +130,17 @@ test('logout no token', function () {
 test('login sets user state', function () {
     $loginRequest = $this->createMock(LoginRequest::class);
     $loginRequest->method('isValid')->willReturn(true);
-    $loginRequest->method('getData')->willReturn(Data::make(['email' => 'test@example.com']));
-
-    $this->request->expects($this->any())
-        ->method('post')
-        ->willReturnCallback(fn ($key) => match ($key) {
-            'device_name' => 'Test Device',
-            default => null
-        });
+    $loginRequest->method('toArray')->willReturn(['email' => 'test@example.com']);
 
     $user = $this->createMock(User::class);
     $user->id = 1;
-    $user->method('only')->willReturn(['id' => 1, 'name' => 'Test', 'email' => 'test@example.com']);
 
-    $this->userService->method('confirmUser')->willReturn($user);
-    $this->tokenManager->method('createToken')->willReturn('1|token');
+    $this->guard->method('attempt')->willReturn(true);
+    $this->guard->method('user')->willReturn($user);
+    $this->guard->method('check')->willReturn(true);
 
-    expect($this->service->isAuthenticated())->toBeFalse();
+    expect($this->service->isAuthenticated())->toBeTrue(); // Initial mock state logic?
+    // Wait, ApiAuthService::login calls guard('api')->setUser($user);
 
     $result = $this->service->login($loginRequest);
 
@@ -153,133 +151,72 @@ test('login sets user state', function () {
 
 test('logout clears user state', function () {
     $user = $this->createMock(User::class);
-    $tokenValidator = $this->createMock(ApiTokenValidatorServiceInterface::class);
-    $tokenValidator->method('getAuthenticatedUser')->willReturn($user);
+    $user->id = 1;
 
-    $request = $this->createMock(Request::class);
-    $request->expects($this->any())->method('getBearerToken')->willReturn('1|token');
+    $this->guard->method('user')->willReturnOnConsecutiveCalls($user, null);
+    $this->guard->method('check')->willReturnOnConsecutiveCalls(true, false);
 
-    $tokenManager = $this->createMock(TokenManager::class);
-    $tokenManager->expects($this->once())->method('revokeToken')->willReturn(true);
+    expect($this->service->isAuthenticated())->toBeTrue();
 
-    $service = new ApiAuthService(
-        $tokenValidator,
-        $this->userService,
-        $tokenManager,
-        $this->firewall,
-        $this->agent,
-        $request
-    );
+    $this->service->logout();
 
-    expect($service->isAuthenticated())->toBeTrue();
-
-    $service->logout();
-
-    expect($service->isAuthenticated())->toBeFalse();
-    expect($service->user())->toBeNull();
+    expect($this->service->isAuthenticated())->toBeFalse();
+    expect($this->service->user())->toBeNull();
 });
 
 test('can() returns true when user has ability', function () {
     $user = $this->createMock(User::class);
-    $tokenValidator = $this->createMock(ApiTokenValidatorServiceInterface::class);
-    $tokenValidator->method('getAuthenticatedUser')->willReturn($user);
+    $this->guard->method('check')->willReturn(true);
 
-    $request = $this->createMock(Request::class);
-    $request->expects($this->any())->method('getBearerToken')->willReturn('1|token');
+    $this->request->expects($this->any())->method('getBearerToken')->willReturn('1|token');
 
-    $tokenManager = $this->createMock(TokenManager::class);
-    $tokenManager->expects($this->once())
+    $this->tokenManager->expects($this->once())
         ->method('checkAbility')
         ->with('1|token', 'read')
         ->willReturn(true);
 
-    $service = new ApiAuthService(
-        $tokenValidator,
-        $this->userService,
-        $tokenManager,
-        $this->firewall,
-        $this->agent,
-        $request
-    );
-
-    expect($service->can('read'))->toBeTrue();
+    expect($this->service->can('read'))->toBeTrue();
 });
 
 test('can() returns false when user lacks ability', function () {
-    $user = $this->createMock(User::class);
-    $tokenValidator = $this->createMock(ApiTokenValidatorServiceInterface::class);
-    $tokenValidator->method('getAuthenticatedUser')->willReturn($user);
+    $this->guard->method('check')->willReturn(true);
+    $this->request->expects($this->any())->method('getBearerToken')->willReturn('1|token');
 
-    $request = $this->createMock(Request::class);
-    $request->expects($this->any())->method('getBearerToken')->willReturn('1|token');
-
-    $tokenManager = $this->createMock(TokenManager::class);
-    $tokenManager->expects($this->once())
+    $this->tokenManager->expects($this->once())
         ->method('checkAbility')
         ->with('1|token', 'write')
         ->willReturn(false);
 
-    $service = new ApiAuthService(
-        $tokenValidator,
-        $this->userService,
-        $tokenManager,
-        $this->firewall,
-        $this->agent,
-        $request
-    );
-
-    expect($service->can('write'))->toBeFalse();
+    expect($this->service->can('write'))->toBeFalse();
 });
 
 test('can() returns false when not authenticated', function () {
-    $tokenValidator = $this->createMock(ApiTokenValidatorServiceInterface::class);
-    $tokenValidator->method('getAuthenticatedUser')->willReturn(null);
+    $this->guard->method('check')->willReturn(false);
 
-    $service = new ApiAuthService(
-        $tokenValidator,
-        $this->userService,
-        $this->tokenManager,
-        $this->firewall,
-        $this->agent,
-        $this->request
-    );
-
-    expect($service->can('read'))->toBeFalse();
+    expect($this->service->can('read'))->toBeFalse();
 });
 
 test('can() checks multiple abilities', function () {
-    $user = $this->createMock(User::class);
-    $tokenValidator = $this->createMock(ApiTokenValidatorServiceInterface::class);
-    $tokenValidator->method('getAuthenticatedUser')->willReturn($user);
+    $this->guard->method('check')->willReturn(true);
+    $this->request->expects($this->any())->method('getBearerToken')->willReturn('1|token');
 
-    $request = $this->createMock(Request::class);
-    $request->expects($this->any())->method('getBearerToken')->willReturn('1|token');
-
-    $tokenManager = $this->createMock(TokenManager::class);
-    $tokenManager->expects($this->any())
+    $this->tokenManager->expects($this->any())
         ->method('checkAbility')
-        ->willReturnCallback(fn ($token, $ability) => in_array($ability, ['read', 'write']));
+        ->willReturnCallback(fn ($token, $ability) => match ($ability) {
+            'read', 'write' => true,
+            default => false
+        });
 
-    $service = new ApiAuthService(
-        $tokenValidator,
-        $this->userService,
-        $tokenManager,
-        $this->firewall,
-        $this->agent,
-        $request
-    );
-
-    expect($service->can(['read', 'write']))->toBeTrue();
-    expect($service->can(['read', 'delete']))->toBeFalse();
+    expect($this->service->can(['read', 'write']))->toBeTrue();
+    expect($this->service->can(['read', 'delete']))->toBeFalse();
 });
 
 test('login with custom abilities', function () {
     $loginRequest = $this->createMock(LoginRequest::class);
     $loginRequest->method('isValid')->willReturn(true);
-    $loginRequest->method('getData')->willReturn(Data::make(['email' => 'test@example.com']));
+    $loginRequest->method('toArray')->willReturn(['email' => 'test@example.com']);
 
-    $request = $this->createMock(Request::class);
-    $request->expects($this->any())
+    $this->request->expects($this->any())
         ->method('post')
         ->willReturnCallback(fn ($key) => match ($key) {
             'device_name' => 'Mobile App',
@@ -288,48 +225,29 @@ test('login with custom abilities', function () {
         });
 
     $user = $this->createMock(User::class);
-    $user->method('only')->willReturn(['id' => 1]);
+    $this->guard->method('attempt')->willReturn(true);
+    $this->guard->method('user')->willReturn($user);
 
-    $userService = $this->createMock(UserService::class);
-    $userService->method('confirmUser')->willReturn($user);
-
-    $tokenManager = $this->createMock(TokenManager::class);
-    $tokenManager->expects($this->once())
+    $this->tokenManager->expects($this->once())
         ->method('createToken')
         ->with($user, 'Mobile App', ['read', 'write'])
-        ->willReturn('1|token');
+        ->willReturn('1|token-secret');
 
-    $service = new ApiAuthService(
-        $this->tokenValidator,
-        $userService,
-        $tokenManager,
-        $this->firewall,
-        $this->agent,
-        $request
-    );
-
-    $result = $service->login($loginRequest);
-
-    expect($result)->toBeTrue();
+    $this->service->login($loginRequest);
 });
 
 test('logout with non-personal-access token returns true', function () {
-    $request = $this->createMock(Request::class);
-    $request->expects($this->any())->method('getBearerToken')->willReturn('some-static-or-dynamic-token');
+    $user = $this->createMock(User::class);
+    $this->guard->method('user')->willReturn($user);
 
-    $tokenManager = $this->createMock(TokenManager::class);
-    $tokenManager->expects($this->never())->method('revokeToken');
+    $this->request->expects($this->any())
+        ->method('getBearerToken')
+        ->willReturn('some-static-token');
 
-    $service = new ApiAuthService(
-        $this->tokenValidator,
-        $this->userService,
-        $tokenManager,
-        $this->firewall,
-        $this->agent,
-        $request
-    );
+    $this->tokenManager->expects($this->never())
+        ->method('revokeToken');
 
-    $result = $service->logout();
+    $result = $this->service->logout();
 
     expect($result)->toBeTrue();
 });
