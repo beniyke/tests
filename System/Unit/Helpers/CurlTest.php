@@ -421,4 +421,30 @@ describe('Response', function () {
             expect($response->httpCode())->toBe(201);
         });
     });
+
+    describe('Error Message', function () {
+        test('prefixes error message with status code', function () {
+            $response = new Response([
+                'status' => true,
+                'http_code' => 404,
+                'body' => null,
+                'headers' => [],
+                'message' => 'Not Found',
+            ]);
+
+            expect($response->getErrorMessage())->toBe('404: Not Found');
+        });
+
+        test('returns raw message when status code is 0', function () {
+            $response = new Response([
+                'status' => false,
+                'http_code' => 0,
+                'body' => null,
+                'headers' => [],
+                'message' => 'Connection Failed',
+            ]);
+
+            expect($response->getErrorMessage())->toBe('Connection Failed');
+        });
+    });
 });
