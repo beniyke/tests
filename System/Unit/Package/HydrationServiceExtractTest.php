@@ -44,4 +44,25 @@ describe('HydrationService Extraction', function () {
 
         expect(FileSystem::exists($extractPath . DIRECTORY_SEPARATOR . 'README.md'))->toBeFalse();
     });
+
+    test('extract overwrites existing files via atomic replace', function () use ($zipPath, $extractPath) {
+        // Pre-create the target file to simulate an existing (potentially locked) file
+        $targetDir = $extractPath . DIRECTORY_SEPARATOR . 'System';
+        FileSystem::mkdir($targetDir);
+        FileSystem::put($targetDir . DIRECTORY_SEPARATOR . 'test.txt', 'old content');
+
+        // Create a ZIP with updated content
+        $zip = new ZipArchive();
+        $zip->open($zipPath, ZipArchive::CREATE);
+        $zip->addEmptyDir('anchor-master/');
+        $zip->addFromString('anchor-master/System/test.txt', 'new content');
+        $zip->close();
+
+        $service = new HydrationService();
+        $results = $service->extract($zipPath, $extractPath, ['System']);
+
+        expect($results['errors'])->toBeEmpty();
+        expect($results['count'])->toBe(1);
+        expect(FileSystem::get($targetDir . DIRECTORY_SEPARATOR . 'test.txt'))->toBe('new content');
+    });
 });
