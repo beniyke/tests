@@ -21,6 +21,21 @@ afterEach(function () {
     Mockery::close();
 });
 
+afterAll(function () {
+    $storageDir = Paths::testPath('storage');
+    // Only clean up dirs created by this test file
+    foreach (['components', 'custom-dir'] as $dir) {
+        $path = $storageDir . DIRECTORY_SEPARATOR . $dir;
+        if (FileSystem::isDir($path)) {
+            FileSystem::delete($path);
+        }
+    }
+    // Remove parent if empty
+    if (FileSystem::isDir($storageDir) && count(glob($storageDir . DIRECTORY_SEPARATOR . '*')) === 0) {
+        FileSystem::delete($storageDir);
+    }
+});
+
 describe('HtmlComponent', function () {
 
     describe('Component Instantiation', function () {

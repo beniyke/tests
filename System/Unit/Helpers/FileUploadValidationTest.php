@@ -27,6 +27,10 @@ use Helpers\Validation\Validator;
 function createDummyFile(string $content = 'test content', string $extension = 'txt'): string
 {
     $filename = Paths::testPath('storage/test_file_' . uniqid() . '.' . $extension);
+    $dir = dirname($filename);
+    if (! FileSystem::isDir($dir)) {
+        FileSystem::mkdir($dir, 0755, true);
+    }
     FileSystem::write($filename, $content);
 
     return $filename;
@@ -36,6 +40,10 @@ function createDummyFile(string $content = 'test content', string $extension = '
 function createDummyImage(): string
 {
     $filename = Paths::testPath('storage/test_image_' . uniqid() . '.png');
+    $dir = dirname($filename);
+    if (! FileSystem::isDir($dir)) {
+        FileSystem::mkdir($dir, 0755, true);
+    }
     // Create a minimal valid PNG file
     $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
     FileSystem::write($filename, $png);
@@ -43,11 +51,25 @@ function createDummyImage(): string
     return $filename;
 }
 
+afterAll(function () {
+    $storageDir = Paths::testPath('storage');
+    // Clean up uploads directory created by moveSecurely tests
+    $uploadsDir = $storageDir . DIRECTORY_SEPARATOR . 'uploads';
+    if (FileSystem::isDir($uploadsDir)) {
+        FileSystem::delete($uploadsDir);
+    }
+    // Remove parent if empty
+    if (FileSystem::isDir($storageDir) && count(glob($storageDir . DIRECTORY_SEPARATOR . '*')) === 0) {
+        FileSystem::delete($storageDir);
+    }
+});
+
 describe('FileUploadValidation', function () {
 
     afterEach(function () {
         // Clean up any test files in temp dir
-        $files = glob(Paths::testPath('storage/test_*'));
+        $storageDir = Paths::testPath('storage');
+        $files = glob($storageDir . '/test_*');
         foreach ($files as $file) {
             if (FileSystem::isFile($file)) {
                 FileSystem::delete($file);

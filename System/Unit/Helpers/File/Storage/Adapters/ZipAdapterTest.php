@@ -12,12 +12,23 @@ use ZipArchive;
 
 beforeEach(function () {
     $this->zipPath = Paths::testPath('storage/anchor_test_' . uniqid() . '.zip');
+    $dir = dirname($this->zipPath);
+    if (! FileSystem::isDir($dir)) {
+        FileSystem::mkdir($dir, 0755, true);
+    }
     $this->adapter = new ZipAdapter(['path' => $this->zipPath]);
 });
 
 afterEach(function () {
     if (FileSystem::exists($this->zipPath)) {
         FileSystem::delete($this->zipPath);
+    }
+});
+
+afterAll(function () {
+    $storageDir = Paths::testPath('storage');
+    if (FileSystem::isDir($storageDir) && count(glob($storageDir . DIRECTORY_SEPARATOR . '*')) === 0) {
+        FileSystem::delete($storageDir);
     }
 });
 

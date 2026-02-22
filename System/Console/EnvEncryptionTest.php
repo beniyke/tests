@@ -24,6 +24,11 @@ beforeEach(function () {
     $app->add(new EnvDecryptCommand());
     $this->setConsoleApplication($app);
 
+    $storageDir = Paths::testPath('storage');
+    if (! FileSystem::isDir($storageDir)) {
+        FileSystem::mkdir($storageDir, 0755, true);
+    }
+
     $this->envPath = Paths::testPath('storage/.env.test');
     $this->encryptedPath = Paths::testPath('storage/.env.test.encrypted');
 
@@ -46,6 +51,14 @@ afterEach(function () {
     }
     if (FileSystem::exists($this->encryptedPath)) {
         FileSystem::delete($this->encryptedPath);
+    }
+});
+
+afterAll(function () {
+    $storageDir = Paths::testPath('storage');
+    // Remove parent if empty
+    if (FileSystem::isDir($storageDir) && count(glob($storageDir . DIRECTORY_SEPARATOR . '*')) === 0) {
+        FileSystem::delete($storageDir);
     }
 });
 

@@ -21,24 +21,23 @@ use Helpers\File\Paths;
  * require actual file I/O to test properly.
  */
 beforeEach(function () {
-    // Define test paths
     $this->backupDir = Paths::testPath('storage/backups');
     $this->dbFile = Paths::testPath('storage/test_backup.sqlite');
 
-    // Ensure clean state using FileSystem facade
     FileSystem::mkdir($this->backupDir, 0777, true);
     FileSystem::put($this->dbFile, '');
 
-    // Configure and connect to the test database
     $this->connection = Connection::configure("sqlite:$this->dbFile")->connect();
 
-    // Store original connection before replacing
-    $this->originalConnection = DB::connection();
+    // Store original connection before replacing (may not exist in test env)
+    try {
+        $this->originalConnection = DB::connection();
+    } catch (RuntimeException $e) {
+        $this->originalConnection = null;
+    }
 
-    // Set as default connection
     DB::setDefaultConnection($this->connection);
 
-    // Configure DBA with test-specific settings
     $config = [
         'driver' => 'sqlite',
         'connections' => [
@@ -51,7 +50,7 @@ beforeEach(function () {
         'database' => $this->dbFile,
     ];
 
-    // Note: DatabaseOperationConfig::getBackupPath() calls Paths::basePath(), so we provide a relative path
+    // Note: DatabaseOperationConfig::getBackupPath() calls Paths::basePath(), so a relative path is provided
     $operationConfig = new DatabaseOperationConfig([
         'operations' => [
             'backup' => ['path' => 'tests/storage/backups'],
@@ -88,41 +87,45 @@ afterEach(function () {
 
     // Cleanup using FileSystem facade
     // Note: On Windows, SQLite file locks can persist briefly even after disconnect
-    // We use @ suppression as a last resort since the files will be cleaned up on next run
     if (FileSystem::exists($this->dbFile)) {
-        @FileSystem::delete($this->dbFile);
+        FileSystem::delete($this->dbFile);
     }
 
     if (FileSystem::isDir($this->backupDir)) {
-        @FileSystem::delete($this->backupDir);
+        FileSystem::delete($this->backupDir);
     }
 });
 
-// Test SQLite backup and restore functionality
+afterAll(function () {
+    $storageDir = Paths::testPath('storage');
+    if (FileSystem::isDir($storageDir) && count(glob($storageDir . DIRECTORY_SEPARATOR . '*')) === 0) {
+        FileSystem::delete($storageDir);
+    }
+});
+
 test('sqlite backup and restore', function () {
-    // 1. Setup Data - create table and insert test records
+    //Setup Data - create table and insert test records
     $this->connection->statement('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)');
     $this->connection->statement("INSERT INTO users (name) VALUES ('Alice')");
     $this->connection->statement("INSERT INTO users (name) VALUES ('Bob')");
 
-    // 2. Export Database - create backup file
+    //Export Database - create backup file
     /** @var DBA $dba */
     $dba = resolve(DBA::class);
-
     $result = $dba->exportDatabase();
     expect($result['status'])->toBeTrue('Export failed: ' . ($result['message'] ?? ''));
     $backupFile = basename($result['filepath']);
 
-    // 3. Wipe Data - delete all records to simulate data loss
+    //Wipe Data - delete all records to simulate data loss
     $this->connection->delete('DELETE FROM users');
     $count = $this->connection->table('users')->count();
     expect($count)->toBe(0);
 
-    // 4. Import Database - restore from backup
+    //Import Database - restore from backup
     $result = $dba->importDatabase($backupFile);
     expect($result['status'])->toBeTrue('Import failed: ' . ($result['message'] ?? ''));
 
-    // 5. Verify Data Restored - check that all data is back
+    //Verify Data Restored - check that all data is back
     $count = $this->connection->table('users')->count();
     expect($count)->toBe(2);
 

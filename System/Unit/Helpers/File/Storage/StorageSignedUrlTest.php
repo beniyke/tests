@@ -29,7 +29,16 @@ beforeEach(function () {
 
 afterEach(function () {
     Mockery::close();
-    FileSystem::delete($this->tempDir);
+    if (is_dir($this->tempDir)) {
+        FileSystem::delete($this->tempDir);
+    }
+});
+
+afterAll(function () {
+    $testingDir = Paths::storagePath('testing');
+    if (is_dir($testingDir)) {
+        FileSystem::delete($testingDir);
+    }
 });
 
 test('generateSignature creates consistent signatures', function () {

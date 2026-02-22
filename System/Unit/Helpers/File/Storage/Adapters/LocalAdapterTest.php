@@ -17,6 +17,13 @@ afterEach(function () {
     FileSystem::delete($this->testRoot);
 });
 
+afterAll(function () {
+    $storageDir = Paths::testPath('storage');
+    if (FileSystem::isDir($storageDir) && count(glob($storageDir . DIRECTORY_SEPARATOR . '*')) === 0) {
+        FileSystem::delete($storageDir);
+    }
+});
+
 test('it can store and retrieve files locally', function () {
     $this->adapter->put('test.txt', 'local data');
 

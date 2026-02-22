@@ -8,34 +8,29 @@ use Helpers\File\Paths;
 
 describe('FileLogger', function () {
     beforeEach(function () {
-        $this->testLogFile = 'App/storage/test_logs/test_'.uniqid().'.log';
+        $this->testLogsDir = Paths::storagePath('test_logs');
+        $this->testLogFile = Paths::join($this->testLogsDir, 'test_' . uniqid() . '.log');
         $this->logger = new FileLogger($this->testLogFile);
     });
 
     afterEach(function () {
-        // Clean up test log file
-        $fullPath = Paths::basePath($this->testLogFile);
-        if (FileSystem::exists($fullPath)) {
-            FileSystem::delete($fullPath);
-        }
-        // Clean up directory
-        $dir = dirname($fullPath);
-        if (FileSystem::isDir($dir)) {
-            FileSystem::delete($dir);
-        }
         // Clear callbacks
         FileLogger::$logCallbacks = [];
+
+        if (FileSystem::isDir($this->testLogsDir)) {
+            FileSystem::delete($this->testLogsDir);
+        }
     });
 
+
     test('constructor creates log file directory', function () {
-        $logFile = 'App/storage/test_logs/subdir/test.log';
+        $logFile = Paths::storagePath('test_logs/subdir/test.log');
         $logger = new FileLogger($logFile);
 
-        $fullPath = Paths::basePath($logFile);
-        expect(FileSystem::isDir(dirname($fullPath)))->toBeTrue();
+        expect(FileSystem::isDir(dirname($logFile)))->toBeTrue();
 
         // Cleanup
-        FileSystem::delete(dirname(dirname($fullPath)));
+        FileSystem::delete(dirname(dirname($logFile)));
     });
 
     test('constructor uses default log file when none provided', function () {
@@ -45,15 +40,14 @@ describe('FileLogger', function () {
     });
 
     test('setLogFile changes log file path', function () {
-        $newLogFile = 'App/storage/test_logs/new_'.uniqid().'.log';
+        $newLogFile = Paths::storagePath('test_logs/new_' . uniqid() . '.log');
         $this->logger->setLogFile($newLogFile);
 
         expect($this->logger->getLogFile())->toBe($newLogFile);
 
         // Cleanup
-        $fullPath = Paths::basePath($newLogFile);
-        if (FileSystem::exists($fullPath)) {
-            FileSystem::delete($fullPath);
+        if (FileSystem::exists($newLogFile)) {
+            FileSystem::delete($newLogFile);
         }
     });
 
@@ -64,10 +58,9 @@ describe('FileLogger', function () {
     test('log writes entry to file', function () {
         $this->logger->log('info', 'Test message');
 
-        $fullPath = Paths::basePath($this->testLogFile);
-        expect(FileSystem::exists($fullPath))->toBeTrue();
+        expect(FileSystem::exists($this->testLogFile))->toBeTrue();
 
-        $content = FileSystem::get($fullPath);
+        $content = FileSystem::get($this->testLogFile);
         expect($content)->toContain('INFO');
         expect($content)->toContain('Test message');
     });
@@ -75,16 +68,14 @@ describe('FileLogger', function () {
     test('log includes timestamp', function () {
         $this->logger->log('info', 'Test message');
 
-        $fullPath = Paths::basePath($this->testLogFile);
-        $content = FileSystem::get($fullPath);
+        $content = FileSystem::get($this->testLogFile);
         expect($content)->toMatch('/\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]/');
     });
 
     test('log includes context as JSON', function () {
         $this->logger->log('info', 'Test message', ['user' => 'john', 'action' => 'login']);
 
-        $fullPath = Paths::basePath($this->testLogFile);
-        $content = FileSystem::get($fullPath);
+        $content = FileSystem::get($this->testLogFile);
         expect($content)->toContain('"user":"john"');
         expect($content)->toContain('"action":"login"');
     });
@@ -92,8 +83,7 @@ describe('FileLogger', function () {
     test('error logs at ERROR level', function () {
         $this->logger->error('Error message');
 
-        $fullPath = Paths::basePath($this->testLogFile);
-        $content = FileSystem::get($fullPath);
+        $content = FileSystem::get($this->testLogFile);
         expect($content)->toContain('ERROR');
         expect($content)->toContain('Error message');
     });
@@ -101,8 +91,7 @@ describe('FileLogger', function () {
     test('warning logs at WARNING level', function () {
         $this->logger->warning('Warning message');
 
-        $fullPath = Paths::basePath($this->testLogFile);
-        $content = FileSystem::get($fullPath);
+        $content = FileSystem::get($this->testLogFile);
         expect($content)->toContain('WARNING');
         expect($content)->toContain('Warning message');
     });
@@ -110,8 +99,7 @@ describe('FileLogger', function () {
     test('critical logs at CRITICAL level', function () {
         $this->logger->critical('Critical message');
 
-        $fullPath = Paths::basePath($this->testLogFile);
-        $content = FileSystem::get($fullPath);
+        $content = FileSystem::get($this->testLogFile);
         expect($content)->toContain('CRITICAL');
         expect($content)->toContain('Critical message');
     });
@@ -119,8 +107,7 @@ describe('FileLogger', function () {
     test('info logs at INFO level', function () {
         $this->logger->info('Info message');
 
-        $fullPath = Paths::basePath($this->testLogFile);
-        $content = FileSystem::get($fullPath);
+        $content = FileSystem::get($this->testLogFile);
         expect($content)->toContain('INFO');
         expect($content)->toContain('Info message');
     });
@@ -128,8 +115,7 @@ describe('FileLogger', function () {
     test('debug logs at DEBUG level', function () {
         $this->logger->debug('Debug message');
 
-        $fullPath = Paths::basePath($this->testLogFile);
-        $content = FileSystem::get($fullPath);
+        $content = FileSystem::get($this->testLogFile);
         expect($content)->toContain('DEBUG');
         expect($content)->toContain('Debug message');
     });
@@ -157,8 +143,7 @@ describe('FileLogger', function () {
         $this->logger->error('Second message');
         $this->logger->debug('Third message');
 
-        $fullPath = Paths::basePath($this->testLogFile);
-        $content = FileSystem::get($fullPath);
+        $content = FileSystem::get($this->testLogFile);
         $lines = explode("\n", trim($content));
 
         expect(count($lines))->toBe(3);
@@ -166,4 +151,11 @@ describe('FileLogger', function () {
         expect($content)->toContain('Second message');
         expect($content)->toContain('Third message');
     });
+});
+
+afterAll(function () {
+    $testLogsDir = Paths::storagePath('test_logs');
+    if (FileSystem::isDir($testLogsDir)) {
+        FileSystem::delete($testLogsDir);
+    }
 });

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Database\DB;
+use Helpers\File\FileSystem;
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -13,7 +15,7 @@ declare(strict_types=1);
 |
 */
 
-use Database\DB;
+use Helpers\File\Paths;
 
 uses(Tests\TestCase::class)->in('App', 'System/Feature', 'System/Integration', 'Packages/*/Architecture');
 uses(Tests\UnitTestCase::class)->in('System/Unit');
@@ -77,3 +79,10 @@ function skipOnSqlite(string $reason = 'SQLite does not support this operation')
         test()->markTestSkipped($reason);
     }
 }
+
+afterAll(function () {
+    $storageDir = Paths::testPath('storage');
+    if (FileSystem::isDir($storageDir)) {
+        FileSystem::delete($storageDir);
+    }
+});

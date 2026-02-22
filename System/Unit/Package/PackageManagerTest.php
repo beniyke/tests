@@ -7,6 +7,7 @@ use Helpers\File\Adapters\Interfaces\FileManipulationInterface;
 use Helpers\File\Adapters\Interfaces\FileMetaInterface;
 use Helpers\File\Adapters\Interfaces\FileReadWriteInterface;
 use Helpers\File\Adapters\Interfaces\PathResolverInterface;
+use Helpers\File\Paths;
 use Package\PackageManager;
 
 beforeEach(function () {
@@ -78,15 +79,15 @@ describe('PackageManager', function () {
 
     // Note: checkStatus() internally uses scandir() which is hard to mock in unit tests
     // Comprehensive status checking is covered in integration tests
-    // Here we just verify the method exists and returns expected status constants
+    // Here it is just to verify the method exists and returns expected status constants
     // Note: getManifest() internally uses require() which is hard to mock in unit tests
     // The successful case (file exists) is covered in integration tests
 
     describe('getManifest', function () {
 
         it('returns empty array when no setup.php exists', function () {
-            $packagePath = '/var/www/System/TestPackage';
-            $setupFile = $packagePath . DIRECTORY_SEPARATOR . 'setup.php';
+            $packagePath = Paths::normalize('/var/www/System/TestPackage');
+            $setupFile = Paths::join($packagePath, 'setup.php');
 
             $this->fileMeta->shouldReceive('isFile')
                 ->with($setupFile)
@@ -112,8 +113,8 @@ describe('PackageManager', function () {
     describe('publishConfig', function () {
 
         it('returns 0 when config directory does not exist', function () {
-            $packagePath = '/var/www/System/TestPackage';
-            $configSource = $packagePath . DIRECTORY_SEPARATOR . 'Config';
+            $packagePath = Paths::normalize('/var/www/System/TestPackage');
+            $configSource = Paths::join($packagePath, 'Config');
 
             $this->fileMeta->shouldReceive('isDir')
                 ->with($configSource)
@@ -132,8 +133,8 @@ describe('PackageManager', function () {
     describe('publishMigrations', function () {
 
         it('returns 0 when migrations directory does not exist', function () {
-            $packagePath = '/var/www/System/TestPackage';
-            $migrationsSource = $packagePath . DIRECTORY_SEPARATOR . 'Database' . DIRECTORY_SEPARATOR . 'Migrations';
+            $packagePath = Paths::normalize('/var/www/System/TestPackage');
+            $migrationsSource = Paths::join($packagePath, 'Database', 'Migrations');
 
             $this->fileMeta->shouldReceive('isDir')
                 ->with($migrationsSource)
@@ -151,11 +152,11 @@ describe('PackageManager', function () {
     describe('checkStatus', function () {
 
         it('returns NOT_INSTALLED when no files are checked', function () {
-            $packagePath = '/var/www/System/TestPackage';
-            $configSource = $packagePath . DIRECTORY_SEPARATOR . 'Config';
-            $migrationSource = $packagePath . DIRECTORY_SEPARATOR . 'Database/Migrations';
+            $packagePath = Paths::normalize('/var/www/System/TestPackage');
 
-            // Mock that directories don't exist for checking
+            // Note: internal implementation now uses Paths::join which normalizes
+            // We use shouldReceive with any() or specific paths if we want to be strict
+            // but for unit tests focusing on the return value:
             $this->fileMeta->shouldReceive('isDir')
                 ->andReturn(false);
 

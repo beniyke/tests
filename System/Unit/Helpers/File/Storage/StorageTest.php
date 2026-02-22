@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\System\Unit\Helpers\File\Storage;
 
 use Core\Services\ConfigServiceInterface;
+use Helpers\File\FileSystem;
 use Helpers\File\Paths;
 use Helpers\File\Storage\Adapters\LocalAdapter;
 use Helpers\File\Storage\Adapters\S3Adapter;
@@ -20,6 +21,21 @@ beforeEach(function () {
 
 afterEach(function () {
     Mockery::close();
+});
+
+afterAll(function () {
+    $storageDir = Paths::testPath('storage');
+    // Only clean up dirs created by this test file
+    foreach (['anchor_storage_test', 'anchor_storage_local', 'anchor_storage_cache'] as $dir) {
+        $path = $storageDir . DIRECTORY_SEPARATOR . $dir;
+        if (FileSystem::isDir($path)) {
+            FileSystem::delete($path);
+        }
+    }
+    // Remove parent if empty
+    if (FileSystem::isDir($storageDir) && count(glob($storageDir . DIRECTORY_SEPARATOR . '*')) === 0) {
+        FileSystem::delete($storageDir);
+    }
 });
 
 test('it resolves local disk by default', function () {

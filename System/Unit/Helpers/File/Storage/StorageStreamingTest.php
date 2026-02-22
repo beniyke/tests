@@ -2,19 +2,29 @@
 
 declare(strict_types=1);
 
+use Helpers\File\FileSystem;
 use Helpers\File\Paths;
 use Helpers\File\Storage\Adapters\LocalAdapter;
 
 beforeEach(function () {
     $this->tempDir = Paths::storagePath('testing/streaming_' . uniqid());
     if (!is_dir($this->tempDir)) {
-        mkdir($this->tempDir, 0755, true);
+        FileSystem::mkdir($this->tempDir, 0755, true);
     }
     $this->adapter = new LocalAdapter(['root' => $this->tempDir]);
 });
 
 afterEach(function () {
-    deleteDirectory($this->tempDir);
+    if (is_dir($this->tempDir)) {
+        FileSystem::delete($this->tempDir);
+    }
+});
+
+afterAll(function () {
+    $testingDir = Paths::storagePath('testing');
+    if (is_dir($testingDir)) {
+        FileSystem::delete($testingDir);
+    }
 });
 
 test('readStream returns resource', function () {
@@ -77,16 +87,3 @@ test('writeStream large file', function () {
 
     fclose($source);
 });
-
-function deleteDirectory($dir)
-{
-    if (!file_exists($dir)) {
-        return;
-    }
-
-    $files = array_diff(scandir($dir), ['.', '..']);
-    foreach ($files as $file) {
-        (is_dir("$dir/$file")) ? deleteDirectory("$dir/$file") : unlink("$dir/$file");
-    }
-    rmdir($dir);
-}

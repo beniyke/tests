@@ -8,16 +8,16 @@ use Helpers\File\Paths;
 
 describe('Cache', function () {
     beforeEach(function () {
-        $this->cacheDir = Paths::storagePath('test_cache_'.uniqid());
-        $this->cache = Cache::create('test_cache_'.uniqid());
+        $this->cacheName = 'test_cache_' . uniqid();
+        $this->cache = Cache::create($this->cacheName);
+        $this->cacheDir = Paths::storagePath($this->cacheName);
     });
 
     afterEach(function () {
         $this->cache->clear();
-        // Clean up the directory if possible, though Cache::clear only deletes files
-        // We might need to manually remove the directory if we want to be clean
-        // But Cache::create uses Paths::storagePath which might be shared.
-        // For now, rely on unique names.
+        if (FileSystem::exists($this->cacheDir)) {
+            FileSystem::delete($this->cacheDir);
+        }
     });
 
     test('writes and reads cache', function () {

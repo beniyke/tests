@@ -8,11 +8,11 @@ use Helpers\File\Zipper\Zipper;
 
 describe('Zipper', function () {
     beforeEach(function () {
-        $this->testDir = Paths::storagePath('zipper_test_'.uniqid());
+        $this->testDir = Paths::storagePath('zipper_test_' . uniqid());
         FileSystem::mkdir($this->testDir, 0777, true);
 
-        $this->file1 = $this->testDir.'/file1.txt';
-        $this->file2 = $this->testDir.'/file2.txt';
+        $this->file1 = $this->testDir . '/file1.txt';
+        $this->file2 = $this->testDir . '/file2.txt';
 
         FileSystem::put($this->file1, 'content1');
         FileSystem::put($this->file2, 'content2');
@@ -21,7 +21,9 @@ describe('Zipper', function () {
     });
 
     afterEach(function () {
-        FileSystem::delete($this->testDir);
+        if (isset($this->testDir) && FileSystem::isDir($this->testDir)) {
+            FileSystem::delete($this->testDir);
+        }
     });
 
     test('creates zip file', function () {
@@ -32,13 +34,13 @@ describe('Zipper', function () {
             ->add([$this->file1, $this->file2])
             ->save($zipName);
 
-        expect(file_exists($zipPath.'/'.$zipName))->toBeTrue();
+        expect(file_exists($zipPath . '/' . $zipName))->toBeTrue();
     });
 
     test('extracts zip file', function () {
         $zipPath = $this->testDir;
         $zipName = 'archive.zip';
-        $extractPath = $this->testDir.'/extracted';
+        $extractPath = $this->testDir . '/extracted';
 
         // Create zip first
         $this->zipper->path($zipPath)
@@ -47,17 +49,17 @@ describe('Zipper', function () {
 
         // Extract
         $zipper = new Zipper();
-        $zipper->file($zipPath.'/'.$zipName)
+        $zipper->file($zipPath . '/' . $zipName)
             ->path($extractPath)
             ->extract();
 
-        expect(file_exists($extractPath.'/file1.txt'))->toBeTrue();
-        expect(file_exists($extractPath.'/file2.txt'))->toBeTrue();
-        expect(file_get_contents($extractPath.'/file1.txt'))->toBe('content1');
+        expect(file_exists($extractPath . '/file1.txt'))->toBeTrue();
+        expect(file_exists($extractPath . '/file2.txt'))->toBeTrue();
+        expect(file_get_contents($extractPath . '/file1.txt'))->toBe('content1');
     });
 
     test('zipData zips directory', function () {
-        $zipFile = $this->testDir.'/data.zip';
+        $zipFile = $this->testDir . '/data.zip';
 
         $result = $this->zipper->zipData([$this->testDir], $zipFile);
 
@@ -92,7 +94,7 @@ describe('Zipper', function () {
     test('extract returns Result object', function () {
         $zipPath = $this->testDir;
         $zipName = 'extract_result.zip';
-        $extractPath = $this->testDir.'/extracted_result';
+        $extractPath = $this->testDir . '/extracted_result';
 
         // Create zip first
         $this->zipper->path($zipPath)
@@ -101,7 +103,7 @@ describe('Zipper', function () {
 
         // Extract
         $zipper = new Zipper();
-        $result = $zipper->file($zipPath.'/'.$zipName)
+        $result = $zipper->file($zipPath . '/' . $zipName)
             ->path($extractPath)
             ->extract();
 
@@ -123,7 +125,7 @@ describe('Zipper', function () {
     });
 
     test('zipData handles single file', function () {
-        $zipFile = $this->testDir.'/single.zip';
+        $zipFile = $this->testDir . '/single.zip';
 
         $result = $this->zipper->zipData([$this->file1], $zipFile);
 
@@ -141,6 +143,6 @@ describe('Zipper', function () {
             ->save($zipName);
 
         expect($result->isSuccess())->toBeTrue();
-        expect(file_exists($zipPath.'/'.$zipName))->toBeTrue();
+        expect(file_exists($zipPath . '/' . $zipName))->toBeTrue();
     });
 });

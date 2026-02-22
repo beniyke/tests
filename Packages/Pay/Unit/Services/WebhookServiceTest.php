@@ -6,7 +6,6 @@ namespace Tests\Packages\Pay\Unit\Services;
 
 use DateTimeImmutable;
 use Exception;
-use Helpers\File\Contracts\LoggerInterface;
 use Mockery;
 use Money\Money;
 use Pay\Contracts\PaymentGatewayInterface;
@@ -15,10 +14,11 @@ use Pay\Enums\Status;
 use Pay\Models\PaymentTransaction;
 use Pay\PayManager;
 use Pay\Services\WebhookService;
+use Testing\Concerns\InteractsWithFakes;
 
 beforeEach(function () {
     $this->payManager = Mockery::mock(PayManager::class);
-    $this->logger = Mockery::mock(LoggerInterface::class);
+    $this->logger = $this->fakeLog();
     $this->gateway = Mockery::mock(PaymentGatewayInterface::class);
 
     // Create partial mock for service to stub findTransaction
@@ -26,6 +26,8 @@ beforeEach(function () {
         ->makePartial()
         ->shouldAllowMockingProtectedMethods();
 });
+
+uses(InteractsWithFakes::class);
 
 afterEach(function () {
     Mockery::close();
@@ -75,18 +77,11 @@ it('handles successful webhook', function () {
         ->with($reference)
         ->andReturn($transactionInstance);
 
-    // Logger should log success and event firing
-    $this->logger->shouldReceive('info')
-        ->with("Payment Successful event fired for: {$reference}")
-        ->once();
-
-    $this->logger->shouldReceive('info')
-        ->with("Webhook processed for transaction: {$reference}")
-        ->once();
-
-    $this->logger->shouldNotReceive('error');
-
     $this->service->handle($driver, $payload, $signature);
+
+    $this->logger->assertLogged('info', fn ($msg) => $msg === "Payment Successful event fired for: {$reference}");
+    $this->logger->assertLogged('info', fn ($msg) => $msg === "Webhook processed for transaction: {$reference}");
+    $this->logger->assertNotLogged('error');
 
     expect(true)->toBeTrue();
 });
@@ -102,11 +97,9 @@ it('handles validation failure', function () {
         ->with($payload, $signature)
         ->andReturn(false); // Validation fails
 
-    $this->logger->shouldReceive('error')
-        ->with("Webhook validation failed for driver: {$driver}")
-        ->once();
-
     $this->service->handle($driver, $payload, $signature);
+
+    $this->logger->assertLogged('error', fn ($msg) => $msg === "Webhook validation failed for driver: {$driver}");
 
     expect(true)->toBeTrue();
 });
@@ -123,11 +116,9 @@ it('handles processing exception', function () {
     $this->gateway->shouldReceive('processWebhook')
         ->andThrow(new Exception("Processing error"));
 
-    $this->logger->shouldReceive('error')
-        ->with(Mockery::pattern('/Webhook Error \(stripe\): Processing error/'))
-        ->once();
-
     $this->service->handle($driver, $payload, $signature);
+
+    $this->logger->assertLogged('error', fn ($msg) => str_contains($msg, "Webhook Error (stripe): Processing error"));
 
     expect(true)->toBeTrue();
 });

@@ -64,17 +64,22 @@ describe('Assets', function () {
             $testFile = Paths::publicPath('assets/test-file.css');
             $dir = dirname($testFile);
 
-            if (! FileSystem::exists($dir)) {
-                FileSystem::mkdir($dir, 0755, true);
+            try {
+                if (! FileSystem::exists($dir)) {
+                    FileSystem::mkdir($dir, 0755, true);
+                }
+
+                FileSystem::put($testFile, '/* test */');
+
+                $result = $this->assets->url('test-file.css');
+
+                // Should contain a query parameter with timestamp (e.g., test-file.css?1678886400)
+                expect($result)->toMatch('/test-file\.css\?\d+/');
+            } finally {
+                if (FileSystem::exists($testFile)) {
+                    FileSystem::delete($testFile);
+                }
             }
-
-            FileSystem::put($testFile, '/* test */');
-
-            $result = $this->assets->url('test-file.css');
-
-            // Should contain a query parameter with timestamp (e.g., test-file.css?1678886400)
-            expect($result)->toMatch('/test-file\.css\?\d+/');
-            FileSystem::delete($testFile);
         });
 
         test('does not append timestamp for non-existent file', function () {
@@ -87,34 +92,39 @@ describe('Assets', function () {
             $testFile = Paths::publicPath('assets/timestamp-test.css');
             $dir = dirname($testFile);
 
-            if (! FileSystem::exists($dir)) {
-                FileSystem::mkdir($dir, 0755, true);
+            try {
+                if (! FileSystem::exists($dir)) {
+                    FileSystem::mkdir($dir, 0755, true);
+                }
+
+                FileSystem::put($testFile, '/* version 1 */');
+                $firstUrl = $this->assets->url('timestamp-test.css');
+
+                // Extract timestamp from first URL
+                preg_match('/\?(\d+)$/', $firstUrl, $matches);
+                $firstTimestamp = $matches[1] ?? null;
+
+                // Wait a moment and modify the file
+                sleep(1);
+                FileSystem::put($testFile, '/* version 2 */');
+
+                // Create new Assets instance to avoid any local instance caching
+                $assets2 = new Assets();
+                $secondUrl = $assets2->url('timestamp-test.css');
+
+                // Extract timestamp from second URL
+                preg_match('/\?(\d+)$/', $secondUrl, $matches);
+                $secondTimestamp = $matches[1] ?? null;
+
+                // Timestamps should be different and the second should be later
+                expect($firstTimestamp)->not->toBeNull();
+                expect($secondTimestamp)->not->toBeNull();
+                expect($secondTimestamp)->toBeGreaterThan($firstTimestamp);
+            } finally {
+                if (FileSystem::exists($testFile)) {
+                    FileSystem::delete($testFile);
+                }
             }
-
-            FileSystem::put($testFile, '/* version 1 */');
-            $firstUrl = $this->assets->url('timestamp-test.css');
-
-            // Extract timestamp from first URL
-            preg_match('/\?(\d+)$/', $firstUrl, $matches);
-            $firstTimestamp = $matches[1] ?? null;
-
-            // Wait a moment and modify the file
-            sleep(1);
-            FileSystem::put($testFile, '/* version 2 */');
-
-            // Create new Assets instance to avoid any local instance caching
-            $assets2 = new Assets();
-            $secondUrl = $assets2->url('timestamp-test.css');
-
-            // Extract timestamp from second URL
-            preg_match('/\?(\d+)$/', $secondUrl, $matches);
-            $secondTimestamp = $matches[1] ?? null;
-
-            // Timestamps should be different and the second should be later
-            expect($firstTimestamp)->not->toBeNull();
-            expect($secondTimestamp)->not->toBeNull();
-            expect($secondTimestamp)->toBeGreaterThan($firstTimestamp); // Changed to '>' as sleep(1) guarantees a new timestamp
-            FileSystem::delete($testFile);
         });
     });
 

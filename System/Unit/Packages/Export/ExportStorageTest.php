@@ -9,11 +9,10 @@ use Core\Services\ConfigServiceInterface;
 use Export\Models\ExportHistory;
 use Export\Services\Exporters\CsvExporter;
 use Export\Services\Exporters\JsonExporter;
+use Helpers\File\FileSystem;
 use Helpers\File\Paths;
 use Helpers\File\Storage\Storage;
 use Mockery;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
 use Tests\System\Fixtures\Exporters\ArrayExporterStub;
 
 beforeEach(function () {
@@ -42,17 +41,15 @@ beforeEach(function () {
 
 afterEach(function () {
     Mockery::close();
-    // Recursive delete temp dir
     if (is_dir($this->tempDir)) {
-        $files = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($this->tempDir, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::CHILD_FIRST
-        );
-        foreach ($files as $fileinfo) {
-            $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
-            $todo($fileinfo->getRealPath());
-        }
-        rmdir($this->tempDir);
+        FileSystem::delete($this->tempDir);
+    }
+});
+
+afterAll(function () {
+    $testingDir = Paths::storagePath('testing');
+    if (is_dir($testingDir)) {
+        FileSystem::delete($testingDir);
     }
 });
 
