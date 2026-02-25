@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests;
 
 use Carbon\Carbon;
+use Core\Ioc\Container;
+use Database\ConnectionInterface;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 use Testing\Concerns\InteractsWithAuthentication;
 use Testing\Concerns\InteractsWithDatabase;
@@ -14,6 +16,7 @@ use Testing\Concerns\InteractsWithPackages;
 use Testing\Concerns\InteractsWithTime;
 use Testing\Concerns\MakesHttpRequests;
 use Testing\Concerns\RefreshDatabase;
+use Testing\Support\DatabaseTestHelper;
 
 abstract class PackageTestCase extends BaseTestCase
 {
@@ -31,11 +34,11 @@ abstract class PackageTestCase extends BaseTestCase
         parent::setUp();
 
         // Setup test environment with App migrations
-        $connection = \Testing\Support\DatabaseTestHelper::setupTestEnvironment([], true);
+        $connection = DatabaseTestHelper::setupTestEnvironment([], true);
 
         // Ensure connection is bound to container (redundant if Helper does it, but safe)
-        if (class_exists(\Core\Ioc\Container::class)) {
-            \Core\Ioc\Container::getInstance()->instance(\Database\ConnectionInterface::class, $connection);
+        if (class_exists(Container::class)) {
+            Container::getInstance()->instance(ConnectionInterface::class, $connection);
         }
     }
 

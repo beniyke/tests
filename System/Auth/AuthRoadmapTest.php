@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Core\Ioc\Container;
 use Core\Services\ConfigServiceInterface;
 use Helpers\Http\Request;
+use Security\Auth\Contracts\Authenticatable;
 use Testing\Concerns\InteractsWithFakes;
 
 describe('Auth Roadmap Features', function () {
@@ -32,12 +33,12 @@ describe('Auth Roadmap Features', function () {
         ]);
 
         $fakeAuth = $this->fakeAuth();
-        $webGuard = $fakeAuth->guard('web');
-        $adminGuard = $fakeAuth->guard('admin');
+        $fakeAuth->actingAs(Mockery::mock(Authenticatable::class), 'web');
+        $fakeAuth->actingAs(Mockery::mock(Authenticatable::class), 'admin');
 
         $fakeAuth->logoutAll();
 
-        // Assertions in AuthFake could be improved to check if logout was called on all guards
-        // But for now, we are verifying the helper usage.
+        $fakeAuth->assertGuest('web');
+        $fakeAuth->assertGuest('admin');
     });
 });
