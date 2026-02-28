@@ -19,13 +19,13 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    Schema::dropIfExists('test_rel_models');
+    Schema::dropIfExists('test_rel_model');
 });
 
 describe('BaseModel - Basic Operations', function () {
     test('sets table name', function () {
         $model = new TestModel();
-        expect($model->getTable())->toBe('test_rel_models');
+        expect($model->getTable())->toBe('test_rel_model');
     });
 
     test('sets fillable attributes', function () {

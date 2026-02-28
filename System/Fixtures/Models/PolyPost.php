@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class PolyPost extends BaseModel
 {
-    protected string $table = 'test_rel_poly_posts';
+    protected string $table = 'test_rel_poly_post';
 
     protected array $fillable = ['title'];
 

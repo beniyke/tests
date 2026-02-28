@@ -10,13 +10,13 @@ class ProductSeeder extends BaseSeeder
 {
     public function run(): void
     {
-        $this->connection->table('test_rel_feature_products')->insert([
+        $this->connection->table('test_product')->insert([
             'name' => 'Laptop',
             'price' => 999.99,
             'stock' => 10,
         ]);
 
-        $this->connection->table('test_rel_feature_products')->insert([
+        $this->connection->table('test_product')->insert([
             'name' => 'Mouse',
             'price' => 29.99,
             'stock' => 50,

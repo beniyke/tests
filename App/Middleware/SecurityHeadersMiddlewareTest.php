@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Middleware\Web\SecurityHeadersMiddleware;
+use Core\Middleware\SecurityHeadersMiddleware;
 use Core\Services\ConfigServiceInterface;
 use Helpers\Http\Request;
 use Helpers\Http\Response;

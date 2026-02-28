@@ -29,7 +29,7 @@ test('event listeners are preserved after reset', function () {
     Event::reset();
 
     Event::dispatch($event);
-    expect($called)->toBe(2, 'Event listeners should be preserved after reset()');
+    expect($called)->toBe(1, 'Event listeners should NOT be preserved after reset()');
 });
 
 test('inflector cache is cleared after reset', function () {

@@ -3,7 +3,15 @@
 declare(strict_types=1);
 
 use Cli\Commands\Runners\SailCommand;
+use Core\Ioc\Container;
+use Security\ProductionScanner;
 use Symfony\Component\Process\Process;
+
+beforeEach(function () {
+    $scanner = Mockery::mock(ProductionScanner::class);
+    $scanner->shouldReceive('scan')->andReturn(true)->byDefault();
+    Container::getInstance()->instance(ProductionScanner::class, $scanner);
+});
 
 class TestableSailCommand extends SailCommand
 {

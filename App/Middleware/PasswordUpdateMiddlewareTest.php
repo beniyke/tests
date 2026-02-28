@@ -3,10 +3,11 @@
 declare(strict_types=1);
 
 use App\Middleware\Web\PasswordUpdateMiddleware;
-use App\Services\Auth\Interfaces\AuthServiceInterface;
+use Core\Contracts\AuthServiceInterface;
 use Core\Services\ConfigServiceInterface;
 use Helpers\Http\Request;
 use Helpers\Http\Response;
+use Security\Auth\Contracts\Authenticatable;
 
 describe('PasswordUpdateMiddleware', function () {
 
@@ -29,7 +30,7 @@ describe('PasswordUpdateMiddleware', function () {
     });
 
     test('allows users with fresh passwords', function () {
-        $user = Mockery::mock();
+        $user = Mockery::mock(Authenticatable::class . '[passwordNeedsUpdate]');
         $user->shouldReceive('passwordNeedsUpdate')->with(90)->andReturn(false);
 
         $auth = Mockery::mock(AuthServiceInterface::class);
@@ -56,7 +57,7 @@ describe('PasswordUpdateMiddleware', function () {
     });
 
     test('redirects users with expired passwords', function () {
-        $user = Mockery::mock();
+        $user = Mockery::mock(Authenticatable::class . '[passwordNeedsUpdate]');
         $user->shouldReceive('passwordNeedsUpdate')->with(90)->andReturn(true);
 
         $auth = Mockery::mock(AuthServiceInterface::class);
@@ -85,7 +86,7 @@ describe('PasswordUpdateMiddleware', function () {
     });
 
     test('allows access to password update route', function () {
-        $user = Mockery::mock();
+        $user = Mockery::mock(Authenticatable::class . '[passwordNeedsUpdate]');
         $user->shouldReceive('passwordNeedsUpdate')->with(90)->andReturn(true);
 
         $auth = Mockery::mock(AuthServiceInterface::class);
@@ -112,7 +113,7 @@ describe('PasswordUpdateMiddleware', function () {
     });
 
     test('allows access to logout route', function () {
-        $user = Mockery::mock();
+        $user = Mockery::mock(Authenticatable::class . '[passwordNeedsUpdate]');
         $user->shouldReceive('passwordNeedsUpdate')->with(90)->andReturn(true);
 
         $auth = Mockery::mock(AuthServiceInterface::class);

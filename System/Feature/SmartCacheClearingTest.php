@@ -5,30 +5,24 @@ declare(strict_types=1);
 namespace Tests\System\Feature;
 
 use App\Enums\UserStatus;
-use App\Listeners\ClearResourceCacheListener;
 use App\Models\User;
-use App\Providers\EventServiceProvider;
-use App\Services\Auth\Interfaces\AuthServiceInterface;
+use Core\Contracts\AuthServiceInterface;
 use Core\Event;
 use Core\Events\KernelTerminateEvent;
 use Core\Ioc\Container;
-use Core\Services\ConfigServiceInterface;
-use Core\Support\Adapters\Interfaces\SapiInterface;
+use Core\Providers\EventServiceProvider;
 use Helpers\File\Cache;
-use Helpers\Http\Request;
 use Helpers\Http\Response;
-use Helpers\Http\Session;
-use Helpers\Http\UserAgent;
-use Testing\Concerns\InteractsWithPackages;
-use Testing\Concerns\RefreshDatabase;
-
-uses(RefreshDatabase::class, InteractsWithPackages::class);
+use Testing\Fakes\RequestFake;
 
 beforeEach(function () {
     $this->refreshDatabase();
 
     // Register EventServiceProvider to ensure ClearResourceCacheListener is active
     (new EventServiceProvider(Container::getInstance()))->boot();
+
+    // Clear cache to ensure isolation
+    Cache::create('query')->clear();
 
     // Mock Auth for potential dependencies
     $auth = mock(AuthServiceInterface::class);
@@ -46,22 +40,7 @@ beforeEach(function () {
     ]);
 });
 
-function createCacheMockRequest(array $data = [], string $method = 'GET', string $uri = '/'): Request
-{
-    $_POST = $data;
-    $_GET = ($method === 'GET') ? $data : [];
-    $_SERVER['REQUEST_METHOD'] = $method;
-    $_SERVER['REQUEST_URI'] = $uri;
-    $_SERVER['PHP_SELF'] = '/index.php' . $uri;
-    $_SERVER['SCRIPT_NAME'] = '/index.php';
 
-    return Request::createFromGlobals(
-        resolve(ConfigServiceInterface::class),
-        resolve(SapiInterface::class),
-        resolve(Session::class),
-        resolve(UserAgent::class)
-    );
-}
 
 test('it automatically tags cached queries with the table name', function () {
     // Enable caching for a query
@@ -93,7 +72,7 @@ test('it invalidates resource cache on successful state-changing actions', funct
     expect(count($keysBefore))->toBeGreaterThan(0);
 
     // 2. Simulate a POST request to update users
-    $request = createCacheMockRequest(['name' => 'Updated'], 'POST', '/users/update/1');
+    $request = RequestFake::create('/users/update/1', 'POST', ['name' => 'Updated']);
     $request->setRouteContext('entity', 'User');
 
     $response = resolve(Response::class);
@@ -116,7 +95,7 @@ test('it does not invalidate cache on GET requests', function () {
     $keysBefore = $cache->keys();
     expect(count($keysBefore))->toBeGreaterThan(0);
 
-    $request = createCacheMockRequest([], 'GET', '/users');
+    $request = RequestFake::create('/users', 'GET');
     $request->setRouteContext('entity', 'User');
     $response = resolve(Response::class);
     $response->status(200);
@@ -134,7 +113,7 @@ test('it does not invalidate cache on failed requests', function () {
     $cache = Cache::create('query')->withPath('user');
     $keysBefore = $cache->keys();
 
-    $request = createCacheMockRequest(['name' => 'Invalid'], 'POST', '/users/update/1');
+    $request = RequestFake::create('/users/update/1', 'POST', ['name' => 'Invalid']);
     $request->setRouteContext('entity', 'User');
     $response = resolve(Response::class);
     $response->status(422); // Validation failure

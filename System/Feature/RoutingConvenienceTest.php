@@ -13,6 +13,16 @@ use Tests\System\Support\Routing\DummyController;
 beforeEach(function () {
     Route::reset();
     UrlResolver::reset();
+
+    // Setup a common test view for routing tests
+    $this->testView = Paths::templatePath('test-route-view.php');
+    FileSystem::put($this->testView, 'Hello, <?= $name ?>!');
+});
+
+afterEach(function () {
+    if (isset($this->testView) && FileSystem::isFile($this->testView)) {
+        FileSystem::delete($this->testView);
+    }
 });
 
 describe('Manual Routing Convenience Methods', function () {
@@ -164,6 +174,14 @@ describe('Manual Routing Convenience Methods', function () {
         $this->get('/test-something-else');
         $this->assertOk();
         $this->assertSee('fallback');
+    });
+
+    test('it supports fallbackView() for direct view rendering', function () {
+        Route::fallbackView('test-route-view', ['name' => 'Fallback Anchor']);
+
+        $this->get('/some-non-existent-page');
+        $this->assertOk();
+        $this->assertSee('Hello, Fallback Anchor!');
     });
 
     test('convenience methods respect group prefixing and naming', function () {

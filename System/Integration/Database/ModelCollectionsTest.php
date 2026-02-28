@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use Testing\Concerns\RefreshDatabase;
 use Tests\System\Fixtures\Models\CollectionTestUser;
+
+uses(RefreshDatabase::class);
 
 describe('ModelCollection - Iteration', function () {
     beforeEach(function () {

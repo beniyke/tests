@@ -10,7 +10,7 @@ class ElectronicsSeeder extends BaseSeeder
 {
     public function run(): void
     {
-        $this->connection->table('test_rel_feature_products')->insert([
+        $this->connection->table('test_product')->insert([
             'name' => 'Keyboard',
             'price' => 79.99,
             'stock' => 25,

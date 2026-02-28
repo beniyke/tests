@@ -2,216 +2,170 @@
 
 declare(strict_types=1);
 
+namespace Tests\System\Unit\Core;
+
 use Core\Ioc\Container;
+use Core\Ioc\ContainerInterface;
+use Exception;
+use ReflectionClass;
+use stdClass;
+use Tests\System\Support\Core\Container\DefaultValue;
+use Tests\System\Support\Core\Container\MakeWithParams;
+use Tests\System\Support\Core\Container\MethodCaller;
+use Tests\System\Support\Core\Container\MethodDependency;
+use Tests\System\Support\Core\Container\OptionalDependent;
+use Tests\System\Support\Core\Container\RequiredDependent;
+use Tests\System\Support\Core\Container\TestClassA;
+use Tests\System\Support\Core\Container\TestClassB;
+use Tests\System\Support\Core\Container\TestConcreteA;
+use Tests\System\Support\Core\Container\TestConcreteB;
+use Tests\System\Support\Core\Container\TestContextInterface;
+use Tests\System\Support\Core\Container\TestDeepDependency;
+use Tests\System\Support\Core\Container\TestDependency;
+use Tests\System\Support\Core\Container\TestDependent;
+use Tests\System\Support\Core\Container\TestMiddleDependency;
+use Tests\System\Support\Core\Container\TestTopLevel;
+use Tests\System\Support\Core\Container\Unresolvable;
 
-$originalContainer = null;
-
-beforeAll(function () use (&$originalContainer) {
-    // Save original container instance
-    $reflection = new ReflectionClass(Container::class);
-    $property = $reflection->getProperty('instance');
-    $property->setAccessible(true);
-    $originalContainer = $property->getValue();
-});
-
-afterAll(function () use (&$originalContainer) {
-    // Restore original container instance
-    if ($originalContainer) {
+describe('Container', function () {
+    beforeEach(function () {
+        // Use reflection to create a new instance of Container since constructor is private
         $reflection = new ReflectionClass(Container::class);
-        $property = $reflection->getProperty('instance');
-        $property->setAccessible(true);
-        $property->setValue(null, $originalContainer);
-    }
-});
+        $this->container = $reflection->newInstanceWithoutConstructor();
 
-beforeEach(function () {
-    // Reset container instance before each test to ensure isolation
-    $reflection = new ReflectionClass(Container::class);
-    $property = $reflection->getProperty('instance');
-    $property->setAccessible(true);
-    $property->setValue(null, null);
+        // Call the constructor if it's defined (even if private)
+        $constructor = $reflection->getConstructor();
+        if ($constructor) {
+            $constructor->setAccessible(true);
+            $constructor->invoke($this->container);
+        }
 
-    $this->container = Container::getInstance();
-});
-
-test('it is a singleton', function () {
-    $container1 = Container::getInstance();
-    $container2 = Container::getInstance();
-
-    expect($container1)->toBe($container2);
-});
-
-test('it can bind and resolve a class', function () {
-    $this->container->bind('foo', function () {
-        return 'bar';
+        // Bind ContainerInterface to the instance itself for the tests
+        $this->container->singleton(ContainerInterface::class, fn () => $this->container);
     });
 
-    expect($this->container->get('foo'))->toBe('bar');
-});
+    describe('Singleton Pattern', function () {
+        test('it is a singleton', function () {
+            // Note: This tests the static singleton pattern of the class, not our local instance
+            $container1 = Container::getInstance();
+            $container2 = Container::getInstance();
 
-test('it can bind a singleton', function () {
-    $this->container->singleton('random', function () {
-        return rand(1, 1000);
+            expect($container1)->toBe($container2);
+        });
     });
 
-    $first = $this->container->get('random');
-    $second = $this->container->get('random');
+    describe('Bindings', function () {
+        test('it can bind and resolve a class', function () {
+            $this->container->bind('foo', function () {
+                return 'bar';
+            });
 
-    expect($first)->toBe($second);
-});
+            expect($this->container->get('foo'))->toBe('bar');
+        });
 
-test('it can bind an instance', function () {
-    $instance = new stdClass();
-    $this->container->instance('my_instance', $instance);
+        test('it can bind a singleton', function () {
+            $this->container->singleton('random', function () {
+                return rand(1, 1000);
+            });
 
-    expect($this->container->get('my_instance'))->toBe($instance);
-});
+            $first = $this->container->get('random');
+            $second = $this->container->get('random');
 
-test('it resolves class dependencies automatically', function () {
-    class TestDependency
-    {
-    }
-    class TestDependent
-    {
-        public function __construct(public TestDependency $dependency)
-        {
-        }
-    }
+            expect($first)->toBe($second);
+        });
 
-    $instance = $this->container->get(TestDependent::class);
+        test('it can bind an instance', function () {
+            $instance = new stdClass();
+            $this->container->instance('my_instance', $instance);
 
-    expect($instance)->toBeInstanceOf(TestDependent::class)
-        ->and($instance->dependency)->toBeInstanceOf(TestDependency::class);
-});
+            expect($this->container->get('my_instance'))->toBe($instance);
+        });
+    });
 
-test('it resolves nested dependencies', function () {
-    class TestDeepDependency
-    {
-    }
-    class TestMiddleDependency
-    {
-        public function __construct(public TestDeepDependency $deep)
-        {
-        }
-    }
-    class TestTopLevel
-    {
-        public function __construct(public TestMiddleDependency $middle)
-        {
-        }
-    }
+    describe('Automatic Resolution', function () {
+        test('it resolves class dependencies automatically', function () {
+            $instance = $this->container->get(TestDependent::class);
 
-    $instance = $this->container->get(TestTopLevel::class);
+            expect($instance)->toBeInstanceOf(TestDependent::class)
+                ->and($instance->dependency)->toBeInstanceOf(TestDependency::class);
+        });
 
-    expect($instance->middle)->toBeInstanceOf(TestMiddleDependency::class)
-        ->and($instance->middle->deep)->toBeInstanceOf(TestDeepDependency::class);
-});
+        test('it resolves nested dependencies', function () {
+            $instance = $this->container->get(TestTopLevel::class);
 
-test('it supports contextual binding', function () {
-    interface TestContextInterface
-    {
-    }
-    class TestConcreteA implements TestContextInterface
-    {
-    }
-    class TestConcreteB implements TestContextInterface
-    {
-    }
+            expect($instance->middle)->toBeInstanceOf(TestMiddleDependency::class)
+                ->and($instance->middle->deep)->toBeInstanceOf(TestDeepDependency::class);
+        });
 
-    class TestClassA
-    {
-        public function __construct(public TestContextInterface $dependency)
-        {
-        }
-    }
-    class TestClassB
-    {
-        public function __construct(public TestContextInterface $dependency)
-        {
-        }
-    }
+        test('it resolves default values', function () {
+            $instance = $this->container->get(DefaultValue::class);
+            expect($instance->value)->toBe('default');
+        });
 
-    $this->container->when(TestClassA::class)
-        ->needs(TestContextInterface::class)
-        ->give(TestConcreteA::class);
+        test('it resolves optional unbound interfaces to null', function () {
+            $instance = $this->container->get(OptionalDependent::class);
+            expect($instance->opt)->toBeNull();
+        })->group('di-optional');
+    });
 
-    $this->container->when(TestClassB::class)
-        ->needs(TestContextInterface::class)
-        ->give(TestConcreteB::class);
+    describe('Contextual Binding', function () {
+        test('it supports contextual binding', function () {
+            $this->container->when(TestClassA::class)
+                ->needs(TestContextInterface::class)
+                ->give(TestConcreteA::class);
 
-    $a = $this->container->get(TestClassA::class);
-    $b = $this->container->get(TestClassB::class);
+            $this->container->when(TestClassB::class)
+                ->needs(TestContextInterface::class)
+                ->give(TestConcreteB::class);
 
-    expect($a->dependency)->toBeInstanceOf(TestConcreteA::class)
-        ->and($b->dependency)->toBeInstanceOf(TestConcreteB::class);
-});
+            $a = $this->container->get(TestClassA::class);
+            $b = $this->container->get(TestClassB::class);
 
-test('it can tag and resolve tagged services', function () {
-    $this->container->bind('service1', fn () => 'one');
-    $this->container->bind('service2', fn () => 'two');
+            expect($a->dependency)->toBeInstanceOf(TestConcreteA::class)
+                ->and($b->dependency)->toBeInstanceOf(TestConcreteB::class);
+        });
+    });
 
-    $this->container->tag(['service1', 'service2'], 'my_tag');
+    describe('Tagging', function () {
+        test('it can tag and resolve tagged services', function () {
+            $this->container->bind('service1', fn () => 'one');
+            $this->container->bind('service2', fn () => 'two');
 
-    $results = $this->container->tagged('my_tag');
+            $this->container->tag(['service1', 'service2'], 'my_tag');
 
-    expect($results)->toBeArray()
-        ->and($results)->toHaveCount(2)
-        ->and($results[0])->toBe('one')
-        ->and($results[1])->toBe('two');
-});
+            $results = $this->container->tagged('my_tag');
 
-test('it can call a method with dependency injection', function () {
-    class MethodDependency
-    {
-    }
-    class MethodCaller
-    {
-        public function action(MethodDependency $dep, $param)
-        {
-            return [$dep, $param];
-        }
-    }
+            expect($results)->toBeArray()
+                ->and($results)->toHaveCount(2)
+                ->and($results[0])->toBe('one')
+                ->and($results[1])->toBe('two');
+        });
+    });
 
-    $caller = new MethodCaller();
-    $result = $this->container->call([$caller, 'action'], ['param' => 'value']);
+    describe('Method Injection', function () {
+        test('it can call a method with dependency injection', function () {
+            $caller = new MethodCaller();
+            $result = $this->container->call([$caller, 'action'], ['param' => 'value']);
 
-    expect($result[0])->toBeInstanceOf(MethodDependency::class)
-        ->and($result[1])->toBe('value');
-});
+            expect($result[0])->toBeInstanceOf(MethodDependency::class)
+                ->and($result[1])->toBe('value');
+        });
+    });
 
-test('it throws exception for unresolvable dependency', function () {
-    class Unresolvable
-    {
-        public function __construct(public $unknown)
-        {
-        }
-    }
+    describe('Edge Cases & Errors', function () {
+        test('it throws exception for unresolvable dependency', function () {
+            expect(fn () => $this->container->get(Unresolvable::class))->toThrow(Exception::class);
+        });
 
-    expect(fn () => $this->container->get(Unresolvable::class))->toThrow(Exception::class);
-});
+        test('it throws exception for required unbound interfaces', function () {
+            expect(fn () => $this->container->get(RequiredDependent::class))->toThrow(Exception::class);
+        })->group('di-optional');
 
-test('it resolves default values', function () {
-    class DefaultValue
-    {
-        public function __construct(public $value = 'default')
-        {
-        }
-    }
+        test('it can make an instance with parameters', function () {
+            $instance = $this->container->make(MakeWithParams::class, ['a' => 1, 'b' => 2]);
 
-    $instance = $this->container->get(DefaultValue::class);
-    expect($instance->value)->toBe('default');
-});
-
-test('it can make an instance with parameters', function () {
-    class MakeWithParams
-    {
-        public function __construct(public $a, public $b)
-        {
-        }
-    }
-
-    $instance = $this->container->make(MakeWithParams::class, ['a' => 1, 'b' => 2]);
-
-    expect($instance->a)->toBe(1)
-        ->and($instance->b)->toBe(2);
+            expect($instance->a)->toBe(1)
+                ->and($instance->b)->toBe(2);
+        });
+    });
 });

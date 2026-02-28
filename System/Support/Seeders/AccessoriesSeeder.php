@@ -10,7 +10,7 @@ class AccessoriesSeeder extends BaseSeeder
 {
     public function run(): void
     {
-        $this->connection->table('test_rel_feature_products')->insert([
+        $this->connection->table('test_product')->insert([
             'name' => 'USB Cable',
             'price' => 9.99,
             'stock' => 100,

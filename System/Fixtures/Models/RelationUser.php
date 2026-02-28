@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class RelationUser extends BaseModel
 {
-    protected string $table = 'test_rel_users';
+    protected string $table = 'test_rel_user';
 
     protected array $fillable = ['name', 'email', 'country_id'];
 
@@ -24,7 +24,7 @@ class RelationUser extends BaseModel
 
     public function roles()
     {
-        return $this->belongsToMany(RelationRole::class, 'test_rel_user_roles', 'user_id', 'role_id');
+        return $this->belongsToMany(RelationRole::class, 'test_rel_user_role', 'user_id', 'role_id');
     }
 
     public function image()

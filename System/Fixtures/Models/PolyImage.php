@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class PolyImage extends BaseModel
 {
-    protected string $table = 'test_rel_poly_images';
+    protected string $table = 'test_rel_poly_image';
 
     protected array $fillable = ['url', 'imageable_id', 'imageable_type'];
 

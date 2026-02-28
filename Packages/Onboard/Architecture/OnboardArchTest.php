@@ -8,8 +8,11 @@ describe('Onboard Architecture', function () {
         ->toOnlyUse([
             'Database\\BaseModel',
             'Database\\Relations',
+            'Database\\Collections\\ModelCollection',
+            'Database\\Query\\Builder',
             'App\\Models\\User',
             'Onboard\\Models',
+            'Onboard\\Enums',
             'Helpers\\DateTimeHelper',
         ]);
 

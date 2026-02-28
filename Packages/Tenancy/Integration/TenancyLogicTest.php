@@ -6,17 +6,16 @@ namespace Tests\Packages\Tenancy\Integration;
 
 use Core\Services\ConfigServiceInterface;
 use Helpers\File\Contracts\CacheInterface;
+use Helpers\File\FileSystem;
 use Helpers\File\Paths;
 use Tenancy\Exceptions\TenantException;
 use Tenancy\Models\Tenant;
 use Tenancy\Services\TenantProvisioningService;
 use Tenancy\TenantManager;
-use Throwable;
 
 describe('Tenancy System', function () {
 
     beforeEach(function () {
-        // Boot the package with migrations
         $this->bootPackage('Tenancy', runMigrations: true);
 
         // Tenancy configuration overrides for testing (AFTER boot to avoid being overwritten)
@@ -25,12 +24,11 @@ describe('Tenancy System', function () {
         $configService->set('tenancy.database.driver', 'sqlite');
         $configService->set('tenancy.database.prefix_pattern', Paths::storagePath('database/tenants/test_unit_'));
 
+        // Ensure directory exists
+        FileSystem::mkdir(Paths::storagePath('database/tenants'), 0777, true);
+
         // Clean up any existing test tenants
-        try {
-            Tenant::query()->where('subdomain', 'like', 'test%')->delete();
-        } catch (Throwable $e) {
-            // Table might not exist yet if migrations failed
-        }
+        Tenant::query()->where('subdomain', 'like', 'test%')->delete();
     });
 
     test('validates subdomain format', function () {
@@ -44,9 +42,7 @@ describe('Tenancy System', function () {
         $tenant = new Tenant();
         $tenant->db_password = 'secret123';
 
-        // Internal attribute should be encrypted (not equal to plain text)
         expect($tenant->attributes['db_password'])->not->toBe('secret123')
-            // Accessor should decrypt it back
             ->and($tenant->db_password)->toBe('secret123');
     });
 
@@ -93,8 +89,7 @@ describe('Tenancy System', function () {
             resolve(ConfigServiceInterface::class),
             resolve(CacheInterface::class)
         );
-        // Should sanitize 'Test@Company' to 'testcompany' and return null (not found)
-        // instead of throwing invalid subdomain exception
+
         $result = $manager->identifyBySubdomain('Test@Company');
         expect($result)->toBeNull();
     });
@@ -106,7 +101,7 @@ describe('Tenancy System', function () {
             'status' => 'active',
             'db_host' => '127.0.0.1',
             'db_port' => '3306',
-            'db_name' => 'tenant_tenant1',
+            'db_name' => Paths::storagePath('database/tenants/test_unit_tenant1.sqlite'),
             'db_user' => 'tenant_tenant1',
             'db_password' => 'password123',
         ]);
@@ -117,7 +112,7 @@ describe('Tenancy System', function () {
             'status' => 'active',
             'db_host' => '127.0.0.1',
             'db_port' => '3306',
-            'db_name' => 'tenant_tenant2',
+            'db_name' => Paths::storagePath('database/tenants/test_unit_tenant2.sqlite'),
             'db_user' => 'tenant_tenant2',
             'db_password' => 'password123',
         ]);
@@ -134,6 +129,8 @@ describe('Tenancy System', function () {
             $manager->reset();
             $tenant1->delete();
             $tenant2->delete();
+            FileSystem::delete($tenant1->db_name);
+            FileSystem::delete($tenant2->db_name);
         }
     });
 
@@ -174,12 +171,11 @@ describe('Tenancy System', function () {
         ]);
 
         try {
-            // Expecting exception
             $service->create([
                 'name' => 'Second Tenant',
                 'subdomain' => $subdomain,
             ]);
-            // If no exception, fail
+
             $this->fail("Should have thrown TenantException");
         } catch (TenantException $e) {
             expect($e->getMessage())->toContain('already exists');

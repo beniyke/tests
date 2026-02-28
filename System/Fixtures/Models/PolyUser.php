@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class PolyUser extends BaseModel
 {
-    protected string $table = 'test_rel_poly_users';
+    protected string $table = 'test_rel_poly_user';
 
     protected array $fillable = ['name'];
 

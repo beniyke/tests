@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Packages\Ghost\Unit;
 
 use App\Models\User;
-use App\Services\Auth\Interfaces\AuthServiceInterface;
 use App\Services\SessionService;
+use Core\Contracts\AuthServiceInterface;
 use Core\Services\ConfigServiceInterface;
 use Ghost\Services\GhostManagerService;
 use Helpers\Http\Session;

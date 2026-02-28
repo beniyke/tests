@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class TestComment extends BaseModel
 {
-    protected string $table = 'test_rel_feature_comments';
+    protected string $table = 'test_comment';
 
     protected array $fillable = ['post_id', 'content'];
 

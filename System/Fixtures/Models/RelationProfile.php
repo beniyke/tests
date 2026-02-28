@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class RelationProfile extends BaseModel
 {
-    protected string $table = 'test_rel_profiles';
+    protected string $table = 'test_rel_profile';
 
     protected array $fillable = ['user_id', 'bio', 'avatar'];
 

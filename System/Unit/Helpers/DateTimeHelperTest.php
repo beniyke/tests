@@ -29,7 +29,9 @@ describe('DateTimeHelper - Creation and Parsing', function () {
     });
 
     test('safeParse returns null for invalid date', function () {
-        expect(DateTimeHelper::safeParse('invalid-date'))->toBeNull();
+        $result = DateTimeHelper::safeParse('invalid-date');
+
+        expect($result)->toBeNull();
     });
 
     test('safeParse returns null for empty string', function () {

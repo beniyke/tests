@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class TestModel extends BaseModel
 {
-    protected string $table = 'test_rel_models';
+    protected string $table = 'test_rel_model';
 
     protected array $fillable = ['name', 'email', 'status'];
 

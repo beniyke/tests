@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class RelationPost extends BaseModel
 {
-    protected string $table = 'test_rel_posts';
+    protected string $table = 'test_rel_post';
 
     protected array $fillable = ['user_id', 'title', 'content'];
 

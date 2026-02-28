@@ -25,6 +25,9 @@ test('Proof package follows architecture standards')
         'Stack',
         'Helpers',
         'Carbon',
+        'resolve',
+        'config',
+        'url',
     ])
     ->ignoring('Proof\Models');
 

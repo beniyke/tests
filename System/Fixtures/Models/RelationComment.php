@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class RelationComment extends BaseModel
 {
-    protected string $table = 'test_rel_comments';
+    protected string $table = 'test_rel_comment';
 
     protected array $fillable = ['post_id', 'content'];
 

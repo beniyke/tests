@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class TestSoftDeleteUser extends BaseModel
 {
-    protected string $table = 'test_rel_soft_delete_users';
+    protected string $table = 'test_rel_soft_delete_user';
 
     protected array $fillable = ['name', 'email', 'deleted_at'];
 

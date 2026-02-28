@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class PolyComment extends BaseModel
 {
-    protected string $table = 'test_rel_poly_comments';
+    protected string $table = 'test_rel_poly_comment';
 
     protected array $fillable = ['body', 'commentable_id', 'commentable_type'];
 

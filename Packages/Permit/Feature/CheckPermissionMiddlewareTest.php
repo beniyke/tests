@@ -36,6 +36,9 @@ describe('CheckPermissionMiddleware', function () {
                 'index' => 'manage',
             ])
             ->byDefault();
+
+        $this->request->shouldReceive('setRouteContext')->andReturnSelf()->byDefault();
+        $this->request->shouldReceive('setRoutePermission')->andReturnSelf()->byDefault();
     });
 
     afterEach(function () {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Middleware\Api\CorsMiddleware;
+use Core\Middleware\CorsMiddleware;
 use Core\Services\ConfigServiceInterface;
 use Helpers\Http\Request;
 use Helpers\Http\Response;

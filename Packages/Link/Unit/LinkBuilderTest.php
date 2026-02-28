@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Packages\Link\Unit;
 
 use Carbon\Carbon;
+use Helpers\DateTimeHelper;
 use Link\Enums\LinkScope;
 use Link\Services\Builders\LinkBuilder;
 use Link\Services\LinkManagerService;
@@ -168,7 +169,7 @@ describe('LinkBuilder', function () {
         it('sets expiry via until()', function () {
             [$manager, $builder] = setupBuilderMocks();
 
-            $targetDate = Carbon::parse('2026-01-10 12:00:00');
+            $targetDate = DateTimeHelper::instance(Carbon::parse('2026-01-10 12:00:00'));
 
             $manager->shouldReceive('create')
                 ->once()

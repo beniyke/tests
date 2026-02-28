@@ -2,21 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Tests\System\Feature;
-
 use Core\Ioc\Container;
 use Core\Services\ConfigServiceInterface;
-use Core\Support\Adapters\Interfaces\SapiInterface;
 use Helpers\Http\Request;
-use Helpers\Http\Session;
-use Helpers\Http\UserAgent;
-use Mockery;
 use Security\Firewall\Drivers\MaintenanceFirewall;
+use Testing\Fakes\RequestFake;
 
 beforeEach(function () {
-    $this->config = mock(ConfigServiceInterface::class);
+    $this->config = Mockery::mock(ConfigServiceInterface::class);
     $this->config->shouldReceive('get')->andReturn(null)->byDefault();
-    $this->config->shouldReceive('get')->with('debug', Mockery::any())->andReturn(false)->byDefault();
+    $this->config->shouldReceive('get')->with('debug', Mockery::any())->andReturn(true)->byDefault();
     $this->config->shouldReceive('get')->with('debug')->andReturn(false)->byDefault();
     $this->config->shouldReceive('get')->with('timezone')->andReturn('UTC')->byDefault();
     $this->config->shouldReceive('get')->with('timezone', Mockery::any())->andReturn('UTC')->byDefault();
@@ -57,35 +52,7 @@ beforeEach(function () {
     Container::getInstance()->instance(ConfigServiceInterface::class, $this->config);
 });
 
-function createMaintenanceMockRequest(string $uri = '/', array $context = [], bool $isApi = false): Request
-{
-    $server = [
-        'REQUEST_METHOD' => 'GET',
-        'REQUEST_URI' => $uri,
-        'REMOTE_ADDR' => '127.0.0.1',
-        'PHP_SELF' => '/index.php' . $uri,
-        'SCRIPT_NAME' => '/index.php',
-    ];
 
-    if ($isApi) {
-        $server['HTTP_ACCEPT'] = 'application/json';
-    }
-
-    $_SERVER = $server;
-
-    $request = Request::createFromGlobals(
-        resolve(ConfigServiceInterface::class),
-        resolve(SapiInterface::class),
-        resolve(Session::class),
-        resolve(UserAgent::class)
-    );
-
-    foreach ($context as $key => $value) {
-        $request->setRouteContext($key, $value);
-    }
-
-    return $request;
-}
 
 test('it blocks all requests when global maintenance is enabled', function () {
     $this->config->shouldReceive('get')->with('firewall')->andReturn([
@@ -104,7 +71,7 @@ test('it blocks all requests when global maintenance is enabled', function () {
         ]
     ]);
 
-    $request = createMaintenanceMockRequest('/any-route', [], true);
+    $request = RequestFake::create('/any-route', 'GET', [], ['HTTP_ACCEPT' => 'application/json']);
     Container::getInstance()->instance(Request::class, $request);
 
     // Refresh firewall with new request
@@ -137,7 +104,8 @@ test('it blocks only specific resources when locked_resources is set', function 
     ]);
 
     // 1. Test locked resource (as API to get string message)
-    $request = createMaintenanceMockRequest('/users', ['resource' => 'users'], true);
+    $request = RequestFake::create('/users', 'GET', [], ['HTTP_ACCEPT' => 'application/json']);
+    $request->setRouteContext('resource', 'users');
     Container::getInstance()->instance(Request::class, $request);
     $firewall = resolve(MaintenanceFirewall::class);
     $firewall->handle();
@@ -145,7 +113,8 @@ test('it blocks only specific resources when locked_resources is set', function 
     expect($firewall->getResponse()['content'])->toContain('The users module is temporarily under maintenance');
 
     // 2. Test unlocked resource
-    $request = createMaintenanceMockRequest('/dashboard', ['resource' => 'dashboard'], true);
+    $request = RequestFake::create('/dashboard', 'GET', [], ['HTTP_ACCEPT' => 'application/json']);
+    $request->setRouteContext('resource', 'dashboard');
     Container::getInstance()->instance(Request::class, $request);
     $firewall = resolve(MaintenanceFirewall::class);
     $firewall->handle();
@@ -169,7 +138,7 @@ test('it allows explicitly allowed routes during maintenance', function () {
         ]
     ]);
 
-    $request = createMaintenanceMockRequest('auth/login', [], true);
+    $request = RequestFake::create('auth/login', 'GET', [], ['HTTP_ACCEPT' => 'application/json']);
     Container::getInstance()->instance(Request::class, $request);
     $firewall = resolve(MaintenanceFirewall::class);
     $firewall->handle();
@@ -194,7 +163,7 @@ test('it allows bypassed IPs during maintenance', function () {
         ]
     ]);
 
-    $request = createMaintenanceMockRequest('/any-route', [], true);
+    $request = RequestFake::create('/any-route', 'GET', [], ['HTTP_ACCEPT' => 'application/json']);
     Container::getInstance()->instance(Request::class, $request);
     $firewall = resolve(MaintenanceFirewall::class);
     $firewall->handle();

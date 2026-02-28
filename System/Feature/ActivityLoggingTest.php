@@ -8,18 +8,14 @@ use Activity\Models\Activity;
 use App\Enums\UserStatus;
 use App\Models\User;
 use App\Providers\EventServiceProvider;
-use App\Services\Auth\Interfaces\AuthServiceInterface;
+use Core\Contracts\AuthServiceInterface;
 use Core\Event;
 use Core\Events\KernelTerminateEvent;
 use Core\Ioc\Container;
-use Core\Services\ConfigServiceInterface;
-use Core\Support\Adapters\Interfaces\SapiInterface;
-use Helpers\Http\Request;
 use Helpers\Http\Response;
-use Helpers\Http\Session;
-use Helpers\Http\UserAgent;
 use Testing\Concerns\InteractsWithPackages;
 use Testing\Concerns\RefreshDatabase;
+use Testing\Fakes\RequestFake;
 
 uses(RefreshDatabase::class, InteractsWithPackages::class);
 
@@ -47,25 +43,9 @@ beforeEach(function () {
     Container::getInstance()->instance(AuthServiceInterface::class, $auth);
 });
 
-function createActivityMockRequest(array $data = [], string $method = 'GET', string $uri = '/'): Request
-{
-    $_POST = $data;
-    $_GET = ($method === 'GET') ? $data : [];
-    $_SERVER['REQUEST_METHOD'] = $method;
-    $_SERVER['REQUEST_URI'] = $uri;
-    $_SERVER['PHP_SELF'] = '/index.php' . $uri;
-    $_SERVER['SCRIPT_NAME'] = '/index.php';
-
-    return Request::createFromGlobals(
-        resolve(ConfigServiceInterface::class),
-        resolve(SapiInterface::class),
-        resolve(Session::class),
-        resolve(UserAgent::class)
-    );
-}
 
 test('it logs state-changing actions on kernel terminate', function () {
-    $request = createActivityMockRequest([], 'POST', '/users/store');
+    $request = RequestFake::create('/users/store', 'POST');
 
     $request->setRouteContext('domain', 'Account');
     $request->setRouteContext('entity', 'User');
@@ -86,7 +66,7 @@ test('it logs state-changing actions on kernel terminate', function () {
 });
 
 test('it does not log GET requests', function () {
-    $request = createActivityMockRequest([], 'GET', '/users');
+    $request = RequestFake::create('/users', 'GET');
     $response = resolve(Response::class);
 
     Event::dispatch(new KernelTerminateEvent($request, $response));
@@ -101,7 +81,7 @@ test('it excludes sensitive data from meta', function () {
         'token' => 'abc'
     ];
 
-    $request = createActivityMockRequest($data, 'POST', '/submit');
+    $request = RequestFake::create('/submit', 'POST', $data);
     $response = resolve(Response::class);
 
     Event::dispatch(new KernelTerminateEvent($request, $response));

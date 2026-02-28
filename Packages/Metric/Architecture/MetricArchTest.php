@@ -8,8 +8,11 @@ describe('Metric Architecture', function () {
         ->toOnlyUse([
             'Database\\BaseModel',
             'Database\\Relations',
+            'Database\\Collections\\ModelCollection',
             'App\\Models\\User',
             'Metric\\Models',
+            'Metric\\Enums',
+            'Helpers\\DateTimeHelper',
         ]);
 
     arch('metric services should not directly use models from other packages')

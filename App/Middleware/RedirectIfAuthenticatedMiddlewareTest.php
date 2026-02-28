@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 use App\Middleware\Web\RedirectIfAuthenticatedMiddleware;
-use App\Services\Auth\Interfaces\AuthServiceInterface;
+use Core\Contracts\AuthServiceInterface;
+use Core\Services\ConfigServiceInterface;
 use Helpers\Http\Request;
 use Helpers\Http\Response;
 
@@ -14,11 +15,13 @@ describe('RedirectIfAuthenticatedMiddleware', function () {
         $auth->shouldReceive('viaGuard')->with('web')->andReturnSelf();
         $auth->shouldReceive('isAuthenticated')->andReturn(true);
 
-        $middleware = new RedirectIfAuthenticatedMiddleware($auth);
+        $config = Mockery::mock(ConfigServiceInterface::class);
+        $config->shouldReceive('get')->with('auth.guards.web.route.home')->andReturn('home');
+        $middleware = new RedirectIfAuthenticatedMiddleware($auth, $config);
         $request = Mockery::mock(Request::class);
         $request->shouldReceive('isLoginRoute')->andReturn(true);
         $request->shouldReceive('getRouteContext')->with('guards')->andReturn(['web']);
-        $request->shouldReceive('fullRouteByName')->with('home')->andReturn('/home');
+        $request->shouldReceive('baseUrl')->with('home')->andReturn('/home');
 
         $response = Mockery::mock(Response::class);
         $response->shouldReceive('redirect')->with('/home')->once()->andReturnSelf();
@@ -36,7 +39,8 @@ describe('RedirectIfAuthenticatedMiddleware', function () {
         $auth->shouldReceive('viaGuard')->with('web')->andReturnSelf();
         $auth->shouldReceive('isAuthenticated')->andReturn(false);
 
-        $middleware = new RedirectIfAuthenticatedMiddleware($auth);
+        $config = Mockery::mock(ConfigServiceInterface::class);
+        $middleware = new RedirectIfAuthenticatedMiddleware($auth, $config);
         $request = Mockery::mock(Request::class);
         $request->shouldReceive('isLoginRoute')->andReturn(true);
         $request->shouldReceive('getRouteContext')->with('guards')->andReturn(['web']);
@@ -55,7 +59,8 @@ describe('RedirectIfAuthenticatedMiddleware', function () {
         $auth = Mockery::mock(AuthServiceInterface::class);
         $auth->shouldReceive('isAuthenticated')->andReturn(true);
 
-        $middleware = new RedirectIfAuthenticatedMiddleware($auth);
+        $config = Mockery::mock(ConfigServiceInterface::class);
+        $middleware = new RedirectIfAuthenticatedMiddleware($auth, $config);
         $request = Mockery::mock(Request::class);
         $request->shouldReceive('isLoginRoute')->andReturn(false);
 

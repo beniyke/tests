@@ -13,6 +13,7 @@ arch('globals')
 
 arch('naming conventions')
     ->expect('Tests')
+    ->classes()
     ->toHaveSuffix('Test')
     ->ignoring([
         'Tests\System\Helpers',
@@ -23,8 +24,10 @@ arch('naming conventions')
         'Tests\DatabaseTransactionTestCase',
         'Tests\UnitTestCase',
         'Tests\System\Fixtures',
+        'Tests\Fixtures',
         'Tests\System\DTOs',
         'Tests\System\Support',
+        'Tests\Support',
         'Tests\Packages\Bridge\Support',
         'Tests\Packages\Slot\Helpers',
         'Tests\Packages\Hub\Support',
@@ -54,7 +57,7 @@ arch('services naming convention')
         '*\Services\Concerns',
         'App\Services\Contracts',
         '*\Services\Contracts',
-        'App\Services\Auth\Interfaces',
+        'System\\Core\\Contracts',
         'App\Services\Account\Interfaces',
         'App\Services\System\Interfaces',
     ]);

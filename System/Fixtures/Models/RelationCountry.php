@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class RelationCountry extends BaseModel
 {
-    protected string $table = 'test_rel_countries';
+    protected string $table = 'test_rel_country';
 
     protected array $fillable = ['name'];
 

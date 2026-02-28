@@ -42,14 +42,14 @@ describe('Relations - HasOne', function () {
     });
 
     test('loads hasOne relationship', function () {
-        $userId = $this->connection->table('test_rel_users')->insertGetId([
+        $userId = $this->connection->table('test_rel_user')->insertGetId([
             'name' => 'John Doe',
             'email' => 'john@example.com',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $this->connection->table('test_rel_profiles')->insert([
+        $this->connection->table('test_rel_profile')->insert([
             'user_id' => $userId,
             'bio' => 'Developer',
             'avatar' => 'avatar.jpg',
@@ -74,14 +74,14 @@ describe('Relations - HasMany', function () {
     });
 
     test('loads hasMany relationship', function () {
-        $userId = $this->connection->table('test_rel_users')->insertGetId([
+        $userId = $this->connection->table('test_rel_user')->insertGetId([
             'name' => 'John Doe',
             'email' => 'john@example.com',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $this->connection->table('test_rel_posts')->insert([
+        $this->connection->table('test_rel_post')->insert([
             'user_id' => $userId,
             'title' => 'First Post',
             'content' => 'Content 1',
@@ -89,7 +89,7 @@ describe('Relations - HasMany', function () {
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $this->connection->table('test_rel_posts')->insert([
+        $this->connection->table('test_rel_post')->insert([
             'user_id' => $userId,
             'title' => 'Second Post',
             'content' => 'Content 2',
@@ -113,14 +113,14 @@ describe('Relations - BelongsTo', function () {
     });
 
     test('loads belongsTo relationship', function () {
-        $userId = $this->connection->table('test_rel_users')->insertGetId([
+        $userId = $this->connection->table('test_rel_user')->insertGetId([
             'name' => 'John Doe',
             'email' => 'john@example.com',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $postId = $this->connection->table('test_rel_posts')->insertGetId([
+        $postId = $this->connection->table('test_rel_post')->insertGetId([
             'user_id' => $userId,
             'title' => 'Test Post',
             'content' => 'Content',
@@ -145,33 +145,33 @@ describe('Relations - BelongsToMany', function () {
     });
 
     test('loads belongsToMany relationship', function () {
-        $userId = $this->connection->table('test_rel_users')->insertGetId([
+        $userId = $this->connection->table('test_rel_user')->insertGetId([
             'name' => 'John Doe',
             'email' => 'john@example.com',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $adminId = $this->connection->table('test_rel_roles')->insertGetId([
+        $adminId = $this->connection->table('test_rel_role')->insertGetId([
             'name' => 'Admin',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $editorId = $this->connection->table('test_rel_roles')->insertGetId([
+        $editorId = $this->connection->table('test_rel_role')->insertGetId([
             'name' => 'Editor',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $this->connection->table('test_rel_user_roles')->insert([
+        $this->connection->table('test_rel_user_role')->insert([
             'user_id' => $userId,
             'role_id' => $adminId,
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $this->connection->table('test_rel_user_roles')->insert([
+        $this->connection->table('test_rel_user_role')->insert([
             'user_id' => $userId,
             'role_id' => $editorId,
             'created_at' => date('Y-m-d H:i:s'),
@@ -194,23 +194,23 @@ describe('Relations - HasManyThrough', function () {
     });
 
     test('loads hasManyThrough relationship', function () {
-        $countryId = $this->connection->table('test_rel_countries')->insertGetId([
+        $countryId = $this->connection->table('test_rel_country')->insertGetId([
             'name' => 'USA',
         ]);
 
-        $userId = $this->connection->table('test_rel_users')->insertGetId([
+        $userId = $this->connection->table('test_rel_user')->insertGetId([
             'country_id' => $countryId,
             'name' => 'John Doe',
             'email' => 'john@example.com',
         ]);
 
-        $this->connection->table('test_rel_posts')->insert([
+        $this->connection->table('test_rel_post')->insert([
             'user_id' => $userId,
             'title' => 'Post 1',
             'content' => 'Content 1',
         ]);
 
-        $this->connection->table('test_rel_posts')->insert([
+        $this->connection->table('test_rel_post')->insert([
             'user_id' => $userId,
             'title' => 'Post 2',
             'content' => 'Content 2',
@@ -233,12 +233,12 @@ describe('Relations - Polymorphic Relations', function () {
     });
 
     test('loads morphOne relationship', function () {
-        $userId = $this->connection->table('test_rel_users')->insertGetId([
+        $userId = $this->connection->table('test_rel_user')->insertGetId([
             'name' => 'John Doe',
             'email' => 'john@example.com',
         ]);
 
-        $this->connection->table('test_rel_images')->insert([
+        $this->connection->table('test_rel_image')->insert([
             'url' => 'user-avatar.jpg',
             'imageable_id' => $userId,
             'imageable_type' => RelationUser::class,
@@ -259,19 +259,19 @@ describe('Relations - Polymorphic Relations', function () {
     });
 
     test('loads morphMany relationship', function () {
-        $postId = $this->connection->table('test_rel_posts')->insertGetId([
+        $postId = $this->connection->table('test_rel_post')->insertGetId([
             'user_id' => 1,
             'title' => 'Test Post',
             'content' => 'Content',
         ]);
 
-        $this->connection->table('test_rel_images')->insert([
+        $this->connection->table('test_rel_image')->insert([
             'url' => 'post-image-1.jpg',
             'imageable_id' => $postId,
             'imageable_type' => RelationPost::class,
         ]);
 
-        $this->connection->table('test_rel_images')->insert([
+        $this->connection->table('test_rel_image')->insert([
             'url' => 'post-image-2.jpg',
             'imageable_id' => $postId,
             'imageable_type' => RelationPost::class,
@@ -291,12 +291,12 @@ describe('Relations - Polymorphic Relations', function () {
     });
 
     test('loads morphTo relationship', function () {
-        $userId = $this->connection->table('test_rel_users')->insertGetId([
+        $userId = $this->connection->table('test_rel_user')->insertGetId([
             'name' => 'John Doe',
             'email' => 'john@example.com',
         ]);
 
-        $imageId = $this->connection->table('test_rel_images')->insertGetId([
+        $imageId = $this->connection->table('test_rel_image')->insertGetId([
             'url' => 'avatar.jpg',
             'imageable_id' => $userId,
             'imageable_type' => RelationUser::class,
@@ -312,21 +312,21 @@ describe('Relations - Polymorphic Relations', function () {
 
 describe('Relations - Eager Loading', function () {
     test('eager loads multiple relationships', function () {
-        $userId = $this->connection->table('test_rel_users')->insertGetId([
+        $userId = $this->connection->table('test_rel_user')->insertGetId([
             'name' => 'John Doe',
             'email' => 'john@example.com',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $this->connection->table('test_rel_profiles')->insert([
+        $this->connection->table('test_rel_profile')->insert([
             'user_id' => $userId,
             'bio' => 'Developer',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $this->connection->table('test_rel_posts')->insert([
+        $this->connection->table('test_rel_post')->insert([
             'user_id' => $userId,
             'title' => 'Post 1',
             'content' => 'Content',

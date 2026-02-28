@@ -6,6 +6,7 @@ use Core\Middleware\SessionMiddleware;
 use Core\Services\ConfigServiceInterface;
 use Helpers\Http\Request;
 use Helpers\Http\Response;
+use Helpers\Http\Session;
 use Testing\Concerns\InteractsWithFakes;
 
 describe('SessionMiddleware', function () {
@@ -28,8 +29,6 @@ describe('SessionMiddleware', function () {
         $result = $middleware->handle($request, $response, $next);
 
         expect($result)->toBe($response);
-        // Note: We need to verify if periodicRegenerate was called.
-        // SessionFake doesn't track this specifically yet, but the test now uses a real-behaving fake.
     });
 
     test('skips regeneration when disabled', function () {
@@ -48,5 +47,23 @@ describe('SessionMiddleware', function () {
 
         $result = $middleware->handle($request, $response, $next);
         expect($result)->toBe($response);
+    });
+
+    test('starts session on handle', function () {
+        $session = Mockery::mock(Session::class);
+        $session->shouldReceive('start')->once();
+
+        $config = Mockery::mock(ConfigServiceInterface::class);
+        $config->shouldReceive('get')->with('session.regenerate')->andReturn(false);
+
+        $middleware = new SessionMiddleware($session, $config);
+        $request = Mockery::mock(Request::class);
+        $response = Mockery::mock(Response::class);
+
+        $next = function ($req, $res) {
+            return $res;
+        };
+
+        $middleware->handle($request, $response, $next);
     });
 });

@@ -166,6 +166,7 @@ describe('Validator', function () {
 
     test('validates date rule', function () {
         $validator = new Validator();
+
         $validator->rules(['dob' => ['date' => 'Y-m-d']])
             ->parameters(['dob' => 'Date of Birth'])
             ->validate(['dob' => 'invalid-date']);

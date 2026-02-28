@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class RelationRole extends BaseModel
 {
-    protected string $table = 'test_rel_roles';
+    protected string $table = 'test_rel_role';
 
     protected array $fillable = ['name'];
 

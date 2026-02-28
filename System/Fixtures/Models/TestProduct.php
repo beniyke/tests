@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class TestProduct extends BaseModel
 {
-    protected string $table = 'test_rel_feature_products';
+    protected string $table = 'test_product';
 
     protected array $fillable = ['name', 'price', 'stock'];
 

@@ -8,11 +8,14 @@ use Testing\Support\DatabaseTestHelper;
 use Tests\System\Fixtures\Models\TestUser;
 
 beforeEach(function () {
+    // Initialize in-memory database connection
+    DatabaseTestHelper::setupInMemoryDatabase();
+
     // Manually setup schema for these tests since we don't use RefreshDatabase
     DatabaseTestHelper::runMigrationsFrom(Paths::basePath('System/Testing/Fixtures/Migrations'));
 
     // Clean up table
-    DB::table('test_rel_feature_users')->truncate();
+    DB::table('test_user')->truncate();
 });
 
 describe('Feature - Database Transactions', function () {

@@ -8,7 +8,9 @@ describe('Pulse Architecture', function () {
         ->toOnlyUse([
             'Database\\BaseModel',
             'Database\\Relations',
+            'Database\\Collections\\ModelCollection',
             'App\\Models\\User',
             'Pulse\\Models',
+            'Helpers\\DateTimeHelper',
         ]);
 });

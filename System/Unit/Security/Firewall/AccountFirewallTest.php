@@ -10,7 +10,6 @@ use Helpers\File\Contracts\CacheInterface;
 use Helpers\Http\Flash;
 use Helpers\Http\Request;
 use Helpers\Http\UserAgent;
-use Notify\Notifier;
 use Security\Firewall\Drivers\AccountFirewall;
 use Security\Firewall\Throttling\Throttler;
 
@@ -18,7 +17,6 @@ beforeEach(function () {
     $this->config = Mockery::mock(ConfigServiceInterface::class);
     $this->cache = Mockery::mock(CacheInterface::class);
     $this->agent = Mockery::mock(UserAgent::class);
-    $this->notifier = Mockery::mock(Notifier::class);
     $this->request = Mockery::mock(Request::class);
     $this->flash = Mockery::mock(Flash::class);
     $this->throttler = Mockery::mock(Throttler::class);
@@ -40,7 +38,6 @@ beforeEach(function () {
         $this->config,
         $this->cache,
         $this->agent,
-        $this->notifier,
         $this->request,
         $this->flash,
         $this->throttler

@@ -3,9 +3,10 @@
 declare(strict_types=1);
 
 use App\Middleware\Api\ApiAuthMiddleware;
-use App\Services\Auth\Interfaces\AuthServiceInterface;
+use Core\Contracts\AuthServiceInterface;
 use Helpers\Http\Request;
 use Helpers\Http\Response;
+use Security\Auth\Contracts\Authenticatable;
 
 describe('ApiAuthMiddleware', function () {
 
@@ -13,7 +14,9 @@ describe('ApiAuthMiddleware', function () {
         $auth = Mockery::mock(AuthServiceInterface::class);
         $auth->shouldReceive('viaGuard')->with('api')->andReturnSelf();
         $auth->shouldReceive('isAuthenticated')->andReturn(true);
-        $auth->shouldReceive('user')->andReturn((object)['id' => 1]);
+        $user = Mockery::mock(Authenticatable::class);
+        $user->shouldReceive('getAttribute')->with('id')->andReturn(1);
+        $auth->shouldReceive('user')->andReturn($user);
 
         $middleware = new ApiAuthMiddleware($auth);
         $request = Mockery::mock(Request::class);

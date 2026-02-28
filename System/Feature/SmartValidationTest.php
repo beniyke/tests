@@ -6,14 +6,12 @@ namespace Tests\System\Feature;
 
 use App\Account\Requests\UserRequest;
 use App\Account\Validations\Form\UserFormRequestValidation;
-use App\Middleware\SmartValidationMiddleware;
+use Core\Middleware\SmartValidationMiddleware;
 use Database\Connection;
 use Database\DB;
 use Database\Schema\Schema;
-use Helpers\Http\Request;
 use Helpers\Http\Response;
-use Helpers\Http\Session;
-use Helpers\Http\UserAgent;
+use Testing\Fakes\RequestFake;
 
 beforeEach(function () {
     $this->connection = Connection::configure('sqlite::memory:')
@@ -39,20 +37,6 @@ beforeEach(function () {
     $this->middleware = resolve(SmartValidationMiddleware::class);
 });
 
-function createMockRequest(array $data = [], array $server = []): Request
-{
-    $_POST = $data;
-    unset($_SERVER['HTTP_X_REQUESTED_WITH'], $_SERVER['HTTP_ACCEPT'], $_SERVER['REQUEST_URI'], $_SERVER['REQUEST_METHOD']);
-    $_SERVER = array_merge($_SERVER, $server);
-
-    return Request::createFromGlobals(
-        resolve(\Core\Services\ConfigServiceInterface::class),
-        resolve(\Core\Support\Adapters\Interfaces\SapiInterface::class),
-        resolve(Session::class),
-        resolve(UserAgent::class)
-    );
-}
-
 test('middleware passes and injects DTO on valid data', function () {
     $response = resolve(Response::class);
 
@@ -65,7 +49,7 @@ test('middleware passes and injects DTO on valid data', function () {
         'gender' => 'male'
     ];
 
-    $request = createMockRequest($data);
+    $request = RequestFake::create('/', 'POST', $data);
     $request->setRouteContext('domain', 'Account');
     $request->setRouteContext('entity', 'User');
     $request->setRouteContext('action', 'store');
@@ -82,7 +66,7 @@ test('middleware redirects on invalid web data', function () {
     $response = resolve(Response::class);
 
     $data = ['name' => 'Jo'];
-    $request = createMockRequest($data);
+    $request = RequestFake::create('/', 'POST', $data);
     $request->setRouteContext('domain', 'Account');
     $request->setRouteContext('entity', 'User');
     $request->setRouteContext('action', 'store');
@@ -104,11 +88,7 @@ test('middleware returns 422 JSON on invalid API data', function () {
         'status' => 'invalid', // Doesn't exist
         'gender' => 'invalid', // Doesn't exist
     ];
-    $request = createMockRequest($data, [
-        'HTTP_ACCEPT' => 'application/json',
-        'REQUEST_METHOD' => 'POST',
-        'REQUEST_URI' => '/api/users'
-    ]);
+    $request = RequestFake::create('/api/users', 'POST', $data, ['HTTP_ACCEPT' => 'application/json']);
 
     $request->setRouteContext('domain', 'Account');
     $request->setRouteContext('entity', 'User');
@@ -130,7 +110,7 @@ test('middleware respects explicit validator in route context', function () {
     $response = resolve(Response::class);
 
     $data = ['name' => 'John Doe', 'email' => 'john@example.com', 'role' => 'admin', 'status' => 'active', 'gender' => 'male'];
-    $request = createMockRequest($data);
+    $request = RequestFake::create('/', 'POST', $data);
 
     // Set a validator explicitly
     $request->setRouteContext('validator', UserFormRequestValidation::class);
@@ -146,8 +126,8 @@ test('middleware returns JSON on AJAX request failure', function () {
     $response = resolve(Response::class);
 
     $data = ['name' => 'Jo'];
-    $request = createMockRequest($data, [
-        'HTTP_X_REQUESTED_WITH' => 'XMLHTTPRequest'
+    $request = RequestFake::create('/', 'POST', $data, [
+        'HTTP_X_REQUESTED_WITH' => 'XMLHTTPREQUEST'
     ]);
 
     $request->setRouteContext('domain', 'Account');
@@ -166,7 +146,7 @@ test('request can perform manual validation via validateUsing()', function () {
     $response = resolve(Response::class);
 
     $data = ['name' => 'John Doe', 'email' => 'john@example.com', 'role' => 'admin', 'status' => 'active', 'gender' => 'male'];
-    $request = createMockRequest($data);
+    $request = RequestFake::create('/', 'POST', $data);
 
     // Register the middleware (which registers the resolver)
     $this->middleware->handle($request, $response, function ($req, $res) {
@@ -184,7 +164,7 @@ test('manual validation through request handles failure via middleware', functio
     $response = resolve(Response::class);
 
     $data = ['name' => 'Jo'];
-    $request = createMockRequest($data);
+    $request = RequestFake::create('/', 'POST', $data);
 
     $result = $this->middleware->handle($request, $response, function ($req, $res) {
         // This should throw ValidationException which middleware catches

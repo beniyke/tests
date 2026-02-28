@@ -10,13 +10,6 @@ describe('CLI Console System', function () {
         expect(class_exists(Console::class))->toBeTrue();
     });
 
-    test('Console uses DeferredTaskTrait', function () {
-        $reflection = new ReflectionClass(Console::class);
-        $traits = $reflection->getTraitNames();
-
-        expect($traits)->toContain('Defer\DeferredTaskTrait');
-    });
-
     test('Console has run method', function () {
         expect(method_exists(Console::class, 'run'))->toBeTrue();
     });

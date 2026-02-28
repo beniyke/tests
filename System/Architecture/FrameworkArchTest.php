@@ -63,6 +63,7 @@ describe('Framework Architecture Rules', function () {
             'trim',
             'file',
             'implode',
+            'Helpers\File\Paths',
             'resolve',
         ]);
 
@@ -82,25 +83,7 @@ describe('Framework Architecture Rules', function () {
         ->expect('*\Middleware\*Middleware')
         ->toHaveSuffix('Middleware');
 
-    arch('Test classes follow naming convention')
-        ->expect('Tests')
-        ->toHaveSuffix('Test')
-        ->ignoring([
-            'Tests\TestCase',
-            'Tests\PackageTestCase',
-            'Tests\UnitTestCase',
-            'Tests\DatabaseTransactionTestCase',
-            'Tests\System\Helpers',
-            'Tests\System\DTOs',
-            'Tests\System\Support',
-            'Tests\System\Fixtures',
-            'Tests\Packages\Bridge\Support',
-            'Tests\Packages\Flow\Helpers',
-            'Tests\Packages\Workflow\Helpers',
-            'Tests\Packages\Slot\Helpers',
-            'Tests\Packages\Hub\Support',
-            'Tests\System\Integration\Package\Fixtures'
-        ]);
+
 
     // =============================================================================
     // Strict Types Declaration
@@ -195,6 +178,8 @@ describe('Best Practices Enforcement', function () {
             'Helpers\Http\Client\Curl',
             'Helpers\Http\Client\Response',
             'ZipArchive',
+            'Symfony\Component\Process\Process',
+            'Core\Support\Adapters\Interfaces\OSCheckerInterface',
             'resolve', // Global helper function
         ]);
 

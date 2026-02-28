@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class TestPost extends BaseModel
 {
-    protected string $table = 'test_rel_feature_posts';
+    protected string $table = 'test_post';
 
     protected array $fillable = ['user_id', 'title', 'content', 'published'];
 

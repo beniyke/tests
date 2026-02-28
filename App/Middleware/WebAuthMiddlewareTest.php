@@ -3,10 +3,11 @@
 declare(strict_types=1);
 
 use App\Middleware\Web\WebAuthMiddleware;
-use App\Services\Auth\Interfaces\AuthServiceInterface;
+use Core\Contracts\AuthServiceInterface;
 use Core\Services\ConfigServiceInterface;
 use Helpers\Http\Request;
 use Helpers\Http\Response;
+use Security\Auth\Contracts\Authenticatable;
 
 describe('WebAuthMiddleware', function () {
 
@@ -30,7 +31,9 @@ describe('WebAuthMiddleware', function () {
     });
 
     test('allows authenticated and authorized users', function () {
-        $user = (object)['id' => 'user-123'];
+        $user = Mockery::mock(Authenticatable::class);
+        $user->shouldReceive('getAuthId')->andReturn('user-123');
+        $user->shouldReceive('getAttribute')->with('id')->andReturn('user-123');
 
         $auth = Mockery::mock(AuthServiceInterface::class);
         $auth->shouldReceive('viaGuard')->with('web')->andReturnSelf();
@@ -65,7 +68,7 @@ describe('WebAuthMiddleware', function () {
         $auth->shouldReceive('isAuthenticated')->andReturn(false);
         $auth->shouldReceive('logout')->once();
         $config = Mockery::mock(ConfigServiceInterface::class);
-        $config->shouldReceive('get')->with('auth.guards.web.login_route')->andReturn(null);
+        $config->shouldReceive('get')->with('auth.guards.web.route.login')->andReturn(null);
 
         $middleware = new WebAuthMiddleware($auth, $config);
         $request = Mockery::mock(Request::class);
@@ -93,7 +96,7 @@ describe('WebAuthMiddleware', function () {
         $auth->shouldReceive('isAuthorized')->with('admin')->andReturn(false);
         $auth->shouldReceive('logout')->once();
         $config = Mockery::mock(ConfigServiceInterface::class);
-        $config->shouldReceive('get')->with('auth.guards.web.login_route')->andReturn(null);
+        $config->shouldReceive('get')->with('auth.guards.web.route.login')->andReturn(null);
 
         $middleware = new WebAuthMiddleware($auth, $config);
         $request = Mockery::mock(Request::class);
@@ -136,6 +139,7 @@ describe('WebAuthMiddleware', function () {
             return $res;
         };
 
+        $config->shouldReceive('get')->with('auth.guards.admin.route.login')->andReturn(null);
         $result = $middleware->handle($request, $response, $next);
         expect($result)->toBe($response);
     });

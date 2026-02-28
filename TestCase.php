@@ -5,8 +5,14 @@ declare(strict_types=1);
 namespace Tests;
 
 use Carbon\Carbon;
+use Core\Event;
 use Core\Ioc\Container;
 use Core\Ioc\ContainerInterface;
+use Core\ProviderManager;
+use Core\Route\Route;
+use Database\BaseModel;
+use Database\ConnectionInterface;
+use Database\DB;
 use Mockery\MockInterface;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 use ReflectionClass;
@@ -43,6 +49,32 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $container = Container::getInstance();
+
+        // Capture the connection if it exists to preserve in-memory state
+        $connection = $container->has(ConnectionInterface::class)
+            ? $container->get(ConnectionInterface::class)
+            : null;
+
+        $container->restore();
+
+        // Re-inject the connection to maintain state across tests in the same process
+        if ($connection) {
+            $container->instance(ConnectionInterface::class, $connection);
+            DB::setDefaultConnection($connection);
+            BaseModel::setConnection($connection);
+        }
+
+        // Reset static state for framework facades
+        DB::reset();
+        Event::reset();
+        Route::reset();
+
+        // Re-boot service providers to re-register static state (listeners, etc.)
+        if ($container->has(ProviderManager::class)) {
+            $container->get(ProviderManager::class)->reboot();
+        }
 
         $this->ensureContainerIntegrity();
 

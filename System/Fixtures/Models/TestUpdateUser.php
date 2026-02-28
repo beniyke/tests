@@ -8,7 +8,7 @@ use Database\BaseModel;
 
 class TestUpdateUser extends BaseModel
 {
-    protected string $table = 'test_rel_update_users';
+    protected string $table = 'test_rel_update_user';
 
     protected array $fillable = ['name', 'email', 'status'];
 }
